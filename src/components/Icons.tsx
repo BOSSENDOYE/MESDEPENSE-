@@ -48,12 +48,13 @@ export const WalletIcon = (p: IconProps) => (
   </Svg>
 );
 
-export const PiggyIcon = (p: IconProps) => (
+export const CoinsIcon = (p: IconProps) => (
   <Svg {...p}>
-    <path d="M19 9.5c.9.4 1.6 1.2 2 2.2" />
-    <path d="M4.5 12.5C4.5 8.9 7.9 6 12 6c1.2 0 2.3.2 3.3.6L18 5v3.3c1 .9 1.6 2 1.8 3.2H21v3h-1.6c-.5 1-1.2 1.9-2.1 2.5V20h-3v-1.6c-.7.1-1.5.2-2.3.2s-1.6-.1-2.3-.3V20h-3v-2.9c-1.4-1.2-2.2-2.8-2.2-4.6Z" />
-    <circle cx="15.5" cy="10.5" r="0.6" fill="currentColor" />
-    <path d="M10 8.5h3" />
+    <ellipse cx="9" cy="6" rx="6" ry="2.5" />
+    <path d="M3 6v4c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V6" />
+    <path d="M3 10v4c0 1.4 2.7 2.5 6 2.5 1 0 2-.1 2.8-.3" />
+    <circle cx="17" cy="16" r="4.5" />
+    <path d="M17 14v4" />
   </Svg>
 );
 

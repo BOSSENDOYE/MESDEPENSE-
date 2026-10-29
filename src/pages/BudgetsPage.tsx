@@ -207,7 +207,7 @@ function TotalBudgetCard({ total, spent, monthName, allocation, savedThisMonth, 
 
       <div className="mt-4 flex items-center gap-3 rounded-2xl bg-teal-50 p-3 dark:bg-teal-950">
         <span aria-hidden="true" className="text-2xl">
-          🐷
+          💰
         </span>
         <div className="min-w-0 flex-1">
           {allocation.savings > 0 ? (
@@ -276,7 +276,7 @@ function TotalBudgetCard({ total, spent, monthName, allocation, savedThisMonth, 
             {allocation.savings > 0 && (
               <li className="flex items-center gap-1">
                 <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: SAVINGS_COLOR }} />
-                🐷 Épargne · {formatPercent((allocation.savings / total) * 100)}
+                💰 Épargne · {formatPercent((allocation.savings / total) * 100)}
               </li>
             )}
             {segments.map((s) => (
@@ -414,7 +414,7 @@ function SavingsBudgetEditor({ current, totalBudget, allocated, onClose }: Savin
 
   return (
     <Modal
-      title="🐷 Épargne du mois"
+      title="💰 Épargne du mois"
       onClose={onClose}
       footer={
         <div className="flex gap-2">

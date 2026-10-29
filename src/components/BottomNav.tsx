@@ -1,12 +1,12 @@
 import type { ComponentType, SVGProps } from 'react';
 import type { Route } from '../hooks/useHashRoute';
-import { HomeIcon, ListIcon, PiggyIcon, SettingsIcon, WalletIcon } from './Icons';
+import { HomeIcon, ListIcon, CoinsIcon, SettingsIcon, WalletIcon } from './Icons';
 
 const ITEMS: readonly { route: Route; label: string; Icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
   { route: 'accueil', label: 'Accueil', Icon: HomeIcon },
   { route: 'depenses', label: 'Dépenses', Icon: ListIcon },
   { route: 'budgets', label: 'Budgets', Icon: WalletIcon },
-  { route: 'epargne', label: 'Épargne', Icon: PiggyIcon },
+  { route: 'epargne', label: 'Épargne', Icon: CoinsIcon },
   { route: 'reglages', label: 'Réglages', Icon: SettingsIcon },
 ];
 

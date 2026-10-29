@@ -22,7 +22,7 @@ export function SavingsSummaryCard({ month, spent }: { month: MonthKey; spent: n
         className="flex min-h-14 items-center gap-3 rounded-3xl bg-teal-50 p-4 text-teal-950 ring-1 ring-teal-200 hover:bg-teal-100 dark:bg-teal-950 dark:text-teal-50 dark:ring-teal-900"
       >
         <span aria-hidden="true" className="text-3xl">
-          🐷
+          💰
         </span>
         <span className="min-w-0 flex-1">
           <span className="block font-semibold">Commencez à épargner</span>
@@ -37,7 +37,7 @@ export function SavingsSummaryCard({ month, spent }: { month: MonthKey; spent: n
     <section aria-labelledby="epargne-accueil" className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800">
       <div className="mb-2 flex items-center justify-between">
         <h2 id="epargne-accueil" className="text-lg font-semibold">
-          🐷 Épargne
+          💰 Épargne
         </h2>
         <a href="#/epargne" className="flex min-h-11 items-center px-2 text-sm font-semibold text-emerald-800 dark:text-emerald-300">
           Voir →

@@ -84,7 +84,7 @@ export function SavingsPage() {
             <dd className="font-semibold tabular-nums">{formatFCFA(money.spent)}</dd>
           </div>
           <div className="min-w-0 rounded-2xl bg-white/15 px-2 py-2 min-[380px]:px-3">
-            <dt className="text-teal-50">🐷 Épargne</dt>
+            <dt className="text-teal-50">💰 Épargne</dt>
             <dd className="font-semibold tabular-nums">{formatFCFA(money.saved)}</dd>
           </div>
         </dl>
@@ -161,7 +161,7 @@ export function SavingsPage() {
 
         {goals.length === 0 ? (
           <EmptyState
-            icon="🐷"
+            icon="💰"
             title="Aucun objectif d'épargne"
             action={<Button onClick={() => setDialog({ kind: 'goal', goal: null })}>Créer un objectif</Button>}
           >

@@ -387,7 +387,7 @@ function BotBubble({ children }: { children: ReactNode }) {
 
 const MONEY_LOOK: Record<MoneyEntry['kind'], { icon: string; title: string; sign: string; saved: string }> = {
   income: { icon: '💵', title: 'Revenu', sign: '+', saved: '✓ Revenu noté' },
-  saving: { icon: '🐷', title: 'Épargne', sign: '+', saved: '✓ Versement noté' },
+  saving: { icon: '💰', title: 'Épargne', sign: '+', saved: '✓ Versement noté' },
   withdrawal: { icon: '↩️', title: 'Retrait', sign: '−', saved: '✓ Retrait noté' },
 };
 
