@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLock } from '../../hooks/useLock';
-import { useUserName } from '../../hooks/useUserName';
+import { useUserName, useUserPhoto } from '../../hooks/useUserName';
 import { biometricName, isAppleDevice } from '../../utils/biometric';
 import { formatLongDate, greetingFor, todayISO } from '../../utils/dates';
 import { formatWait } from '../../utils/pin';
@@ -13,6 +13,7 @@ import { PinMessage, PinPad } from './PinPad';
 export function LockScreen() {
   const { unlock, pinLength, blockedUntil, biometricEnabled, unlockWithBiometric } = useLock();
   const [userName] = useUserName();
+  const [photo] = useUserPhoto();
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [errorKey, setErrorKey] = useState(0);
@@ -90,6 +91,7 @@ export function LockScreen() {
       eyebrow={greetingFor(new Date())}
       title={userName || 'Mes Dépenses'}
       caption={formatLongDate(todayISO())}
+      photo={photo}
       avatar={initial || undefined}
       footer={
         <button

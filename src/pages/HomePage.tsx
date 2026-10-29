@@ -11,7 +11,8 @@ import { ShareBars } from '../components/ShareBars';
 import { StatTile } from '../components/StatTile';
 import { Button, Card, mutedText } from '../components/ui';
 import { useAppData } from '../hooks/useAppData';
-import { greetingLine, useUserName } from '../hooks/useUserName';
+import { greetingLine, useUserName, useUserPhoto } from '../hooks/useUserName';
+import { Avatar } from '../components/Avatar';
 import type { Expense } from '../types';
 import { paymentMethodLabel } from '../utils/constants';
 import {
@@ -50,6 +51,7 @@ interface HomePageProps {
 export function HomePage({ onAdd, onEdit }: HomePageProps) {
   const { expenses, budgets, totalBudget, getCategory } = useAppData();
   const [userName] = useUserName();
+  const [userPhoto] = useUserPhoto();
   const [month, setMonth] = useState(currentMonthKey);
   const today = todayISO();
 
@@ -104,9 +106,9 @@ export function HomePage({ onAdd, onEdit }: HomePageProps) {
             <h1 className="whitespace-nowrap text-xl font-bold">Tableau de bord</h1>
           </div>
         </div>
-        <p className={`shrink-0 whitespace-nowrap rounded-full bg-white px-3 py-1 text-xs font-medium ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800 ${mutedText}`}>
-          {formatLongDate(today)}
-        </p>
+        <a href="#/reglages" className="shrink-0 rounded-full" aria-label="Mon profil (Réglages)" title={formatLongDate(today)}>
+          <Avatar photo={userPhoto} name={userName} className="h-11 w-11 text-lg ring-2 ring-white shadow-sm dark:ring-slate-800" />
+        </a>
       </header>
 
       <MonthSwitcher month={month} onChange={setMonth} />

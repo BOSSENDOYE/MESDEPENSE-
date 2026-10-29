@@ -1,5 +1,6 @@
 import type { ISODate, PaymentMethod } from '../types';
 import { isPaymentMethod } from './constants';
+import { isImageDataUrl } from './image';
 import { isPinConfig, type PinConfig } from './pin';
 
 // Petites préférences et brouillons gardés dans localStorage (écriture synchrone :
@@ -197,6 +198,26 @@ export function setUserName(name: string): void {
   const trimmed = name.trim().replace(/\s+/g, ' ').slice(0, USER_NAME_MAX_LENGTH);
   if (trimmed) write('profil:nom', trimmed);
   else remove('profil:nom');
+}
+
+/** Photo de profil (data URL JPEG carrée), ou null. */
+export function getUserPhoto(): string | null {
+  const value = read('profil:photo');
+  return isImageDataUrl(value) ? value : null;
+}
+
+/** Retourne false si le téléphone n'a plus de place pour l'enregistrer. */
+export function setUserPhoto(dataUrl: string | null): boolean {
+  if (dataUrl === null) {
+    remove('profil:photo');
+    return true;
+  }
+  try {
+    localStorage.setItem(PREFIX + 'profil:photo', dataUrl);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Efface toutes les préférences et brouillons de l'application (code oublié). */

@@ -6,7 +6,9 @@ interface LockLayoutProps {
   title: string;
   /** Petite ligne sous le titre (ex. la date). */
   caption?: string;
-  /** Initiale affichée dans l'avatar ; sans valeur, le logo de l'application est affiché. */
+  /** Photo de profil (data URL), prioritaire sur l'initiale. */
+  photo?: string | null;
+  /** Initiale affichée dans l'avatar ; sans photo ni initiale, le logo de l'application est affiché. */
   avatar?: string;
   /** Pavé de saisie : occupe l'espace restant, clavier en bas. */
   children: ReactNode;
@@ -14,7 +16,7 @@ interface LockLayoutProps {
 }
 
 /** Écran de connexion / création du code : en-tête vert arrondi, pavé sur fond clair. */
-export function LockLayout({ eyebrow, title, caption, avatar, children, footer }: LockLayoutProps) {
+export function LockLayout({ eyebrow, title, caption, photo, avatar, children, footer }: LockLayoutProps) {
   return (
     <main className="flex h-dvh flex-col overflow-hidden bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <header className="relative overflow-hidden rounded-b-[2.5rem] bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-900 px-6 pb-[clamp(1.25rem,3.5dvh,2rem)] pt-[max(1rem,env(safe-area-inset-top))] text-white shadow-lg shadow-emerald-900/20">
@@ -29,7 +31,13 @@ export function LockLayout({ eyebrow, title, caption, avatar, children, footer }
         </div>
 
         <div className="relative mx-auto mt-[clamp(0.75rem,2.5dvh,1.5rem)] flex max-w-sm flex-col items-center text-center">
-          {avatar ? (
+          {photo ? (
+            <img
+              src={photo}
+              alt=""
+              className="h-[clamp(3.5rem,9dvh,5rem)] w-[clamp(3.5rem,9dvh,5rem)] rounded-full object-cover shadow-lg shadow-emerald-950/30 ring-4 ring-white/40"
+            />
+          ) : avatar ? (
             <div
               aria-hidden="true"
               className="flex h-[clamp(3.5rem,9dvh,5rem)] w-[clamp(3.5rem,9dvh,5rem)] items-center justify-center rounded-full bg-white/15 text-[clamp(1.5rem,4dvh,2.25rem)] font-bold ring-4 ring-white/25 backdrop-blur"
