@@ -1,14 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLock } from '../../hooks/useLock';
-import { formatLongDate, greetingFor, todayISO } from '../../utils/dates';
+import { greetingLine, useUserName } from '../../hooks/useUserName';
+import { biometricName, isAppleDevice } from '../../utils/biometric';
+import { formatLongDate, todayISO } from '../../utils/dates';
 import { formatWait } from '../../utils/pin';
+import { FaceIdIcon, FingerprintIcon } from '../Icons';
 import { ForgotPinDialog } from './ForgotPinDialog';
 import { LockLayout } from './LockLayout';
 import { PinMessage, PinPad } from './PinPad';
 
-/** Écran de connexion : déverrouillage par code. */
+/** Écran de connexion : déverrouillage par code ou Face ID / empreinte. */
 export function LockScreen() {
-  const { unlock, pinLength, blockedUntil } = useLock();
+  const { unlock, pinLength, blockedUntil, biometricEnabled, unlockWithBiometric } = useLock();
+  const [userName] = useUserName();
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [errorKey, setErrorKey] = useState(0);
@@ -16,6 +20,7 @@ export function LockScreen() {
   const [retryAt, setRetryAt] = useState<number | null>(blockedUntil);
   const [now, setNow] = useState(Date.now());
   const [forgot, setForgot] = useState(false);
+  const autoTried = useRef(false);
 
   // Compte à rebours pendant un blocage temporaire.
   useEffect(() => {
@@ -31,6 +36,22 @@ export function LockScreen() {
     return () => clearInterval(timer);
   }, [retryAt]);
 
+  async function tryBiometric() {
+    setBusy(true);
+    setError(null);
+    const result = await unlockWithBiometric();
+    if (result.ok) return; // l'application s'affiche
+    setBusy(false);
+    setError(result.error);
+  }
+
+  // Android : la demande d'empreinte s'ouvre directement. iPhone : Safari exige un toucher sur le bouton.
+  useEffect(() => {
+    if (!biometricEnabled || autoTried.current || isAppleDevice()) return;
+    autoTried.current = true;
+    void tryBiometric();
+  }, [biometricEnabled]);
+
   async function submit(pin: string) {
     setBusy(true);
     const result = await unlock(pin);
@@ -45,12 +66,19 @@ export function LockScreen() {
 
   const blocked = retryAt !== null && now < retryAt;
   const message = blocked && retryAt !== null ? `Trop d'essais. Réessayez dans ${formatWait(retryAt - now)}.` : error;
+  const BiometricIcon = isAppleDevice() ? FaceIdIcon : FingerprintIcon;
 
   return (
     <LockLayout
-      eyebrow={`${greetingFor(new Date())} 👋 · ${formatLongDate(todayISO())}`}
+      eyebrow={`${greetingLine(userName)} · ${formatLongDate(todayISO())}`}
       title="Mes Dépenses"
-      subtitle={blocked ? 'Saisie temporairement bloquée' : 'Entrez votre code secret'}
+      subtitle={
+        blocked
+          ? 'Saisie du code temporairement bloquée'
+          : biometricEnabled
+            ? `Utilisez ${biometricName()} ou votre code`
+            : 'Entrez votre code secret'
+      }
       footer={
         <button
           type="button"
@@ -73,7 +101,7 @@ export function LockScreen() {
         label="Entrez votre code"
         tone="brand"
         errorKey={errorKey}
-        error={message !== null && value.length === 0}
+        error={message !== null && value.length === 0 && errorKey > 0}
         message={
           message ? (
             <PinMessage tone="brand" kind="error">
@@ -84,6 +112,17 @@ export function LockScreen() {
               Vérification…
             </PinMessage>
           ) : null
+        }
+        sideKey={
+          biometricEnabled
+            ? {
+                label: <BiometricIcon width={30} height={30} />,
+                ariaLabel: `Déverrouiller avec ${biometricName()}`,
+                onClick: () => void tryBiometric(),
+                // Reste utilisable pendant un blocage du code.
+                disabled: busy,
+              }
+            : undefined
         }
       />
       {forgot && <ForgotPinDialog onClose={() => setForgot(false)} />}

@@ -1,6 +1,7 @@
 import { BackupSection } from '../components/settings/BackupSection';
 import { CategoryManager } from '../components/settings/CategoryManager';
 import { OfflineStatus } from '../components/settings/OfflineStatus';
+import { ProfileSection } from '../components/settings/ProfileSection';
 import { RecurringManager } from '../components/settings/RecurringManager';
 import { SecuritySection } from '../components/settings/SecuritySection';
 import { PageHeader, mutedText } from '../components/ui';
@@ -9,6 +10,7 @@ export function SettingsPage() {
   return (
     <div className="space-y-4">
       <PageHeader title="Réglages" />
+      <ProfileSection />
       <SecuritySection />
       <OfflineStatus />
       <CategoryManager />

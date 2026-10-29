@@ -11,6 +11,7 @@ import { ShareBars } from '../components/ShareBars';
 import { StatTile } from '../components/StatTile';
 import { Button, Card, mutedText } from '../components/ui';
 import { useAppData } from '../hooks/useAppData';
+import { greetingLine, useUserName } from '../hooks/useUserName';
 import type { Expense } from '../types';
 import { paymentMethodLabel } from '../utils/constants';
 import {
@@ -18,7 +19,6 @@ import {
   dayOfMonthOf,
   formatLongDate,
   formatMonthLabel,
-  greetingFor,
   formatMonthName,
   shiftMonth,
   todayISO,
@@ -49,6 +49,7 @@ interface HomePageProps {
 
 export function HomePage({ onAdd, onEdit }: HomePageProps) {
   const { expenses, budgets, getCategory } = useAppData();
+  const [userName] = useUserName();
   const [month, setMonth] = useState(currentMonthKey);
   const today = todayISO();
 
@@ -89,7 +90,7 @@ export function HomePage({ onAdd, onEdit }: HomePageProps) {
     <div className="space-y-4">
       <header className="flex items-end justify-between gap-2 pb-1 pt-2">
         <div>
-          <p className={`text-sm ${mutedText}`}>{greetingFor(new Date())} 👋</p>
+          <p className={`text-sm ${mutedText}`}>{greetingLine(userName)}</p>
           <h1 className="text-2xl font-bold">Tableau de bord</h1>
         </div>
         <p className={`rounded-full bg-white px-3 py-1 text-xs font-medium ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800 ${mutedText}`}>

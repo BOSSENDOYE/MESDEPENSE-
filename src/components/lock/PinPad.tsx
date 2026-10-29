@@ -8,6 +8,7 @@ export interface PinSideKey {
   label: ReactNode;
   ariaLabel: string;
   onClick: () => void;
+  /** Par défaut, suit l'état `disabled` du pavé. */
   disabled?: boolean;
 }
 
@@ -156,7 +157,7 @@ export function PinPad({
             type="button"
             className={sideClass}
             onClick={sideKey.onClick}
-            disabled={disabled || sideKey.disabled}
+            disabled={sideKey.disabled ?? disabled}
             aria-label={sideKey.ariaLabel}
           >
             {sideKey.label}

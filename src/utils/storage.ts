@@ -175,6 +175,30 @@ export function setAutoLockSeconds(seconds: number): void {
   write('securite:delai', String(seconds));
 }
 
+/** Identifiant de la clé Face ID / empreinte, ou null si désactivé. */
+export function getBiometricCredential(): string | null {
+  return read('securite:biometrie');
+}
+
+export function setBiometricCredential(credentialId: string | null): void {
+  if (credentialId) write('securite:biometrie', credentialId);
+  else remove('securite:biometrie');
+}
+
+// --- Profil ---
+
+export const USER_NAME_MAX_LENGTH = 30;
+
+export function getUserName(): string {
+  return read('profil:nom') ?? '';
+}
+
+export function setUserName(name: string): void {
+  const trimmed = name.trim().replace(/\s+/g, ' ').slice(0, USER_NAME_MAX_LENGTH);
+  if (trimmed) write('profil:nom', trimmed);
+  else remove('profil:nom');
+}
+
 /** Efface toutes les préférences et brouillons de l'application (code oublié). */
 export function clearAllLocalData(): void {
   try {

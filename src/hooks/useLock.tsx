@@ -1,8 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createPinConfig, formatWait, FREE_ATTEMPTS, lockoutDelayMs, verifyPin, type PinConfig } from '../utils/pin';
+import { describeBiometricError, registerBiometric, verifyBiometric } from '../utils/biometric';
 import {
   clearPinConfig,
   getAutoLockSeconds,
+  getBiometricCredential,
+  setBiometricCredential,
   getPinAttempts,
   getPinConfig,
   getPinSkipped,
@@ -34,6 +37,12 @@ interface LockContextValue {
   setAutoLockSeconds: (seconds: number) => void;
   /** Horodatage de fin de blocage en cours (ms), ou null. */
   blockedUntil: () => number | null;
+  biometricEnabled: boolean;
+  /** Déverrouille avec Face ID / l'empreinte. */
+  unlockWithBiometric: () => Promise<PinCheck>;
+  /** Enregistre Face ID / l'empreinte (le téléphone affiche sa demande). */
+  enableBiometric: (userName: string) => Promise<void>;
+  disableBiometric: () => void;
 }
 
 const LockContext = createContext<LockContextValue | null>(null);
@@ -47,6 +56,7 @@ export function LockProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<PinConfig | null>(getPinConfig);
   const [mode, setMode] = useState<LockMode>(() => initialMode(config));
   const [autoLockSeconds, setAutoLock] = useState(getAutoLockSeconds);
+  const [biometricId, setBiometricId] = useState<string | null>(() => (config ? getBiometricCredential() : null));
 
   // Verrouillage automatique après un passage en arrière-plan.
   useEffect(() => {
@@ -121,9 +131,36 @@ export function LockProvider({ children }: { children: ReactNode }) {
 
   const disablePin = useCallback(() => {
     clearPinConfig();
+    setBiometricCredential(null); // la biométrie n'existe qu'en complément du code
+    setBiometricId(null);
     setPinSkipped(true);
     setConfig(null);
     setMode('unlocked');
+  }, []);
+
+  const unlockWithBiometric = useCallback(async (): Promise<PinCheck> => {
+    if (!biometricId) return { ok: false, error: 'Reconnaissance non activée.', retryAt: null };
+    try {
+      if (await verifyBiometric(biometricId)) {
+        setPinAttempts({ failures: 0, lockUntil: 0 });
+        setMode('unlocked');
+        return { ok: true };
+      }
+      return { ok: false, error: 'Reconnaissance non validée. Tapez votre code.', retryAt: null };
+    } catch (err) {
+      return { ok: false, error: describeBiometricError(err), retryAt: null };
+    }
+  }, [biometricId]);
+
+  const enableBiometric = useCallback(async (userName: string) => {
+    const id = await registerBiometric(userName);
+    setBiometricCredential(id);
+    setBiometricId(id);
+  }, []);
+
+  const disableBiometric = useCallback(() => {
+    setBiometricCredential(null);
+    setBiometricId(null);
   }, []);
 
   const skipSetup = useCallback(() => {
@@ -153,8 +190,28 @@ export function LockProvider({ children }: { children: ReactNode }) {
       autoLockSeconds,
       setAutoLockSeconds,
       blockedUntil,
+      biometricEnabled: biometricId !== null,
+      unlockWithBiometric,
+      enableBiometric,
+      disableBiometric,
     }),
-    [mode, config, checkPin, unlock, lockNow, savePin, disablePin, skipSetup, autoLockSeconds, setAutoLockSeconds, blockedUntil],
+    [
+      mode,
+      config,
+      checkPin,
+      unlock,
+      lockNow,
+      savePin,
+      disablePin,
+      skipSetup,
+      autoLockSeconds,
+      setAutoLockSeconds,
+      blockedUntil,
+      biometricId,
+      unlockWithBiometric,
+      enableBiometric,
+      disableBiometric,
+    ],
   );
 
   return <LockContext.Provider value={value}>{children}</LockContext.Provider>;

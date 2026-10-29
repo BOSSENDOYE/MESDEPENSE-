@@ -121,8 +121,13 @@ export function PinSetup({ onDone, tone = 'neutral' }: PinSetupProps) {
       }
       sideKey={
         step === 'enter'
-          ? { label: 'OK', ariaLabel: 'Valider le code', onClick: continueToConfirm, disabled: value.length < PIN_MIN_LENGTH }
-          : { label: 'Retour', ariaLabel: 'Revenir au choix du code', onClick: restart }
+          ? {
+              label: 'OK',
+              ariaLabel: 'Valider le code',
+              onClick: continueToConfirm,
+              disabled: busy || value.length < PIN_MIN_LENGTH,
+            }
+          : { label: 'Retour', ariaLabel: 'Revenir au choix du code', onClick: restart, disabled: busy }
       }
     />
   );
