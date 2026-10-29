@@ -3,7 +3,9 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import { requestPersistentStorage } from './db/snapshot';
 import './index.css';
+import { setupPwa } from './pwa';
 
+setupPwa();
 void requestPersistentStorage();
 
 const root = document.getElementById('root');

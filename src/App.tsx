@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { BottomNav } from './components/BottomNav';
 import { ExpenseFormModal } from './components/ExpenseFormModal';
 import { PlusIcon } from './components/Icons';
@@ -6,6 +6,8 @@ import { ToastProvider } from './components/ToastProvider';
 import { Button } from './components/ui';
 import { AppDataProvider, useAppData } from './hooks/useAppData';
 import { useHashRoute } from './hooks/useHashRoute';
+import { usePwaStatus } from './hooks/usePwaStatus';
+import { useToast } from './hooks/useToast';
 import { BudgetsPage } from './pages/BudgetsPage';
 import { ExpensesPage } from './pages/ExpensesPage';
 import { HomePage } from './pages/HomePage';
@@ -36,6 +38,17 @@ function AppShell() {
   const [route] = useHashRoute();
   const [editor, setEditor] = useState<EditorState>({ open: false });
   const [pendingDraft, setPendingDraft] = useState(readPendingDraft);
+  const { offlineState, online } = usePwaStatus();
+  const { showToast } = useToast();
+  const previousOfflineState = useRef(offlineState);
+
+  // Prévenir au moment où le cache hors-ligne vient d'être complété (première ouverture).
+  useEffect(() => {
+    if (previousOfflineState.current === 'preparing' && offlineState === 'ready') {
+      showToast("✅ Application prête : elle fonctionne maintenant sans Internet.");
+    }
+    previousOfflineState.current = offlineState;
+  }, [offlineState, showToast]);
 
   const openNew = useCallback(() => setEditor({ open: true, expense: null }), []);
   const openEdit = useCallback((expense: Expense) => setEditor({ open: true, expense }), []);
@@ -76,6 +89,14 @@ function AppShell() {
         Aller au contenu
       </a>
       <main id="contenu" className="mx-auto max-w-lg px-4 pb-40 pt-[max(0.5rem,env(safe-area-inset-top))]">
+        {!online && (
+          <p
+            role="status"
+            className="mb-3 rounded-2xl bg-slate-800 px-3 py-2 text-center text-sm font-medium text-white dark:bg-slate-200 dark:text-slate-950"
+          >
+            📴 Hors-ligne : tout fonctionne, vos dépenses sont enregistrées sur le téléphone.
+          </p>
+        )}
         {pendingDraft && !editor.open && (
           <div className="mb-3 flex items-center gap-2 rounded-2xl bg-amber-50 p-3 text-amber-950 ring-1 ring-amber-200 dark:bg-amber-950 dark:text-amber-50 dark:ring-amber-800">
             <p className="min-w-0 flex-1 text-sm">
