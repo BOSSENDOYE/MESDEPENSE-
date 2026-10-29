@@ -63,6 +63,59 @@ export interface RecurringExpense {
   lastRunMonth: MonthKey;
 }
 
+/** Versement automatique mensuel vers un objectif d'épargne. */
+export interface SavingsAuto {
+  amount: number;
+  /** Jour du mois (1–31). Si le mois est plus court, le dernier jour est utilisé. */
+  dayOfMonth: number;
+  active: boolean;
+  /** Dernier mois ('yyyy-MM') pour lequel le versement a été noté. */
+  lastRunMonth: MonthKey;
+}
+
+/** Objectif d'épargne (cagnotte). L'application note l'argent mis de côté, elle ne le déplace pas. */
+export interface SavingsGoal {
+  id: string;
+  name: string;
+  /** Emoji affiché comme icône. */
+  icon: string;
+  /** Montant visé en FCFA ; null = épargne libre, sans montant cible. */
+  target: number | null;
+  /** Mois visé ('yyyy-MM') ; null = pas d'échéance. */
+  deadline: MonthKey | null;
+  createdAt: string;
+  auto?: SavingsAuto;
+}
+
+/** Mouvement d'épargne : versement (montant positif) ou retrait (montant négatif). */
+export interface SavingsMovement {
+  id: string;
+  goalId: string;
+  /** FCFA, entier non nul : > 0 versement, < 0 retrait. */
+  amount: number;
+  date: ISODate;
+  note: string;
+  createdAt: string;
+  /** Présent si le versement a été créé par le versement automatique. */
+  auto?: boolean;
+}
+
+export type SavingsMovementInput = Omit<SavingsMovement, 'id' | 'createdAt'>;
+
+/** Argent reçu : salaire, vente, transfert… */
+export interface Income {
+  id: string;
+  /** Montant en FCFA, entier strictement positif. */
+  amount: number;
+  date: ISODate;
+  /** Origine écrite librement (ex. « Salaire »). */
+  source: string;
+  note: string;
+  createdAt: string;
+}
+
+export type IncomeInput = Omit<Income, 'id' | 'createdAt'>;
+
 export interface AppDataSnapshot {
   expenses: Expense[];
   categories: Category[];
@@ -70,6 +123,11 @@ export interface AppDataSnapshot {
   recurring: RecurringExpense[];
   /** Budget total du mois (FCFA), à répartir entre les catégories ; null = non défini. */
   totalBudget: number | null;
+  /** Part du budget du mois réservée à l'épargne ; null = aucune. */
+  savingsBudget: number | null;
+  goals: SavingsGoal[];
+  movements: SavingsMovement[];
+  incomes: Income[];
 }
 
 export interface BackupFile extends AppDataSnapshot {

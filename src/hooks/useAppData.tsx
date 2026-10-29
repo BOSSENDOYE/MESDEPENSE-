@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { applyDueRecurring } from '../db/recurring';
+import { applyDueAutoSavings } from '../db/savings';
 import { readAllData } from '../db/snapshot';
 import type { AppDataSnapshot, Category } from '../types';
 import { sortCategories } from '../utils/categories';
@@ -16,11 +17,21 @@ export interface AppDataContextValue extends AppDataSnapshot {
   getCategory: (id: string) => Category;
   /** Relit toutes les données depuis IndexedDB. */
   reload: () => Promise<void>;
-  /** Crée les dépenses récurrentes échues puis recharge si besoin. Retourne le nombre créé. */
+  /** Crée les dépenses récurrentes et versements automatiques échus, puis recharge si besoin. */
   runRecurring: () => Promise<number>;
 }
 
-const EMPTY: AppDataSnapshot = { expenses: [], categories: [], budgets: [], recurring: [], totalBudget: null };
+const EMPTY: AppDataSnapshot = {
+  expenses: [],
+  categories: [],
+  budgets: [],
+  recurring: [],
+  totalBudget: null,
+  savingsBudget: null,
+  goals: [],
+  movements: [],
+  incomes: [],
+};
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
 
@@ -53,9 +64,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const runRecurring = useCallback(async () => {
     try {
       const created = await applyDueRecurring();
-      if (created > 0) {
+      const saved = await applyDueAutoSavings();
+      if (created > 0 || saved > 0) {
         await reload();
-        showToast(`${pluralize(created, 'dépense récurrente ajoutée', 'dépenses récurrentes ajoutées')}.`, 'info');
+        const parts = [
+          created > 0 ? pluralize(created, 'dépense récurrente ajoutée', 'dépenses récurrentes ajoutées') : null,
+          saved > 0 ? pluralize(saved, 'versement automatique noté', 'versements automatiques notés') : null,
+        ].filter((p): p is string => p !== null);
+        showToast(`${parts.join(' · ')}.`, 'info');
       }
       return created;
     } catch (err) {

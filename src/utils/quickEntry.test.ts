@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { Category } from '../types';
+import type { Category, SavingsGoal } from '../types';
 import { DEFAULT_CATEGORIES } from './constants';
-import { interpretMessage, parseQuickEntry, splitEntries, type QuickEntry } from './quickEntry';
+import { classifySegment, interpretMessage, parseQuickEntry, splitEntries, type MoneyEntry, type QuickEntry } from './quickEntry';
 
 // Jeudi 29 octobre 2026
 const TODAY = '2026-10-29';
@@ -108,5 +108,54 @@ describe('interpretMessage', () => {
     const intent = interpretMessage('taxi 2000 et pain 500', categories, TODAY);
     expect(intent.kind).toBe('entries');
     if (intent.kind === 'entries') expect(intent.results.map((r) => r.ok && r.entry.amount)).toEqual([2000, 500]);
+  });
+});
+
+describe('épargne et revenus', () => {
+  const goals: SavingsGoal[] = [
+    { id: 'tab', name: 'Tabaski', icon: '🐑', target: 150000, deadline: null, createdAt: '' },
+    { id: 'urg', name: "Fonds d'urgence", icon: '🛟', target: null, deadline: null, createdAt: '' },
+  ];
+  const money = (text: string, list = goals): MoneyEntry => {
+    const intent = interpretMessage(text, categories, TODAY, list);
+    if (intent.kind !== 'entries') throw new Error(intent.kind);
+    const result = intent.results[0];
+    if (!result?.ok || result.kind !== 'money') throw new Error(`pas un mouvement : ${text}`);
+    return result.entry;
+  };
+
+  it('reconnaît un versement et son objectif', () => {
+    expect(money('épargne 5000 tabaski')).toMatchObject({ kind: 'saving', amount: 5000, goalId: 'tab', label: '' });
+    expect(money("j'ai mis 10 000 de côté pour l'urgence hier")).toMatchObject({
+      kind: 'saving',
+      amount: 10000,
+      goalId: 'urg',
+      date: '2026-10-28',
+    });
+  });
+
+  it('objectif inconnu : propose un nom ; un seul objectif : le choisit', () => {
+    expect(money('épargne 20000 moto')).toMatchObject({ goalId: null, label: 'Moto' });
+    expect(money('économie 3000', [goals[0]!])).toMatchObject({ goalId: 'tab' });
+    expect(money('économie 3000')).toMatchObject({ goalId: null, label: '' });
+  });
+
+  it('retrait', () => {
+    expect(money('retrait 2000 tabaski')).toMatchObject({ kind: 'withdrawal', amount: 2000, goalId: 'tab' });
+  });
+
+  it('revenus', () => {
+    expect(money('salaire 250 000 virement')).toMatchObject({ kind: 'income', amount: 250000, label: 'Salaire', note: '' });
+    expect(money('salaire 30000 prime')).toMatchObject({ label: 'Salaire', note: 'Prime' });
+    expect(money("j'ai reçu 50k de papa")).toMatchObject({ kind: 'income', amount: 50000, label: 'Papa' });
+  });
+
+  it('une dépense reste une dépense', () => {
+    expect(classifySegment('taxi 2000', goals)).toBe('expense');
+    expect(classifySegment('retrait 5000', goals)).toBe('expense');
+  });
+
+  it('bilan d’épargne sans montant', () => {
+    expect(interpretMessage("combien j'ai épargné ?", categories, TODAY, goals).kind).toBe('summary');
   });
 });

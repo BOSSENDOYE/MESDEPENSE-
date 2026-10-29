@@ -110,16 +110,18 @@ export function budgetProgress(budgets: readonly Budget[], monthExpenses: readon
 
 export interface BudgetAllocation {
   total: number;
+  /** Part réservée à l'épargne (mise de côté avant de répartir). */
+  savings: number;
   /** Somme des budgets par catégorie. */
   allocated: number;
   /** Reste à répartir ; négatif si on a réparti plus que le total. */
   remaining: number;
 }
 
-/** Répartition du budget total du mois entre les catégories. */
-export function budgetAllocation(total: number, budgets: readonly Budget[]): BudgetAllocation {
+/** Répartition du budget total du mois : d'abord l'épargne, puis les catégories. */
+export function budgetAllocation(total: number, budgets: readonly Budget[], savings = 0): BudgetAllocation {
   const allocated = budgets.reduce((sum, b) => sum + b.monthlyLimit, 0);
-  return { total, allocated, remaining: total - allocated };
+  return { total, savings, allocated, remaining: total - savings - allocated };
 }
 
 /** Montant correspondant à un pourcentage du budget total, arrondi à 500 FCFA. */

@@ -1,10 +1,11 @@
 import { addDays, format, getDay, parseISO, subDays, subMonths } from 'date-fns';
-import type { Category, ISODate, PaymentMethod } from '../types';
+import type { Category, ISODate, PaymentMethod, SavingsGoal } from '../types';
 import { daysInMonth, isValidISODate, monthKeyOf } from './dates';
 import { MAX_AMOUNT } from './money';
 import { normalizeText } from './text';
 
-// Assistant de saisie hors-ligne : transforme « taxi 2000 wave hier » en dépense. Fonctions pures.
+// Assistant de saisie hors-ligne : transforme « taxi 2000 wave hier » en dépense,
+// « épargne 5000 tabaski » en versement et « salaire 250000 » en revenu. Fonctions pures.
 
 export interface QuickEntry {
   amount: number;
@@ -20,12 +21,27 @@ export interface QuickEntry {
   source: string;
 }
 
-export type QuickEntryResult = { ok: true; entry: QuickEntry } | { ok: false; source: string; error: string };
+export type QuickEntryResult = { ok: true; kind: 'expense'; entry: QuickEntry } | { ok: false; source: string; error: string };
+
+/** Revenu, versement d'épargne ou retrait. */
+export interface MoneyEntry {
+  kind: 'income' | 'saving' | 'withdrawal';
+  amount: number;
+  date: ISODate;
+  /** Objectif reconnu (épargne et retrait) ; null = à choisir. */
+  goalId: string | null;
+  /** Revenu : origine (« Salaire ») ; épargne non rattachée : nom proposé pour un nouvel objectif. */
+  label: string;
+  note: string;
+  source: string;
+}
+
+export type SegmentResult = QuickEntryResult | { ok: true; kind: 'money'; entry: MoneyEntry };
 
 export type AssistantIntent =
   | { kind: 'help' }
   | { kind: 'summary' }
-  | { kind: 'entries'; results: QuickEntryResult[] }
+  | { kind: 'entries'; results: SegmentResult[] }
   | { kind: 'empty' };
 
 /** Mots-clés → catégorie par défaut + type proposé. Clés normalisées (minuscules, sans accents). */
@@ -81,6 +97,19 @@ const KEYWORDS: Record<string, readonly (readonly [string, string])[]> = {
     ['coiffure', 'Coiffure'], ['cadeau', 'Cadeau'], ['tontine', 'Tontine'], ['transfert', 'Transfert'],
   ],
 };
+
+const SAVING_WORDS = new Set([
+  'epargne', 'epargner', 'epargnes', 'economie', 'economies', 'economise', 'economiser', 'cagnotte', 'cote', 'verse',
+  'verser', 'versement',
+]);
+const WITHDRAW_WORDS = new Set(['retrait', 'retire', 'retirer', 'retires', 'preleve']);
+/** Mots de revenu → origine proposée ('' = on garde le reste du texte). */
+const INCOME_WORDS = new Map([
+  ['salaire', 'Salaire'], ['paie', 'Salaire'], ['revenu', 'Revenu'], ['revenus', 'Revenu'], ['prime', 'Prime'],
+  ['bourse', 'Bourse'], ['commission', 'Commission'], ['benefice', 'Bénéfice'], ['vente', 'Vente'], ['ventes', 'Vente'],
+  ['recu', ''], ['recus', ''], ['recue', ''], ['gagne', ''],
+]);
+const MONEY_STOPWORDS = new Set(['mis', 'mets', 'met', 'mettre', 'dans', 'vers', 'compte', 'objectif', 'argent', 'je', 'ai', 'fait']);
 
 const PAYMENT_WORDS: readonly (readonly [string, PaymentMethod])[] = [
   ['orange money', 'orange_money'], ['wave', 'wave'], ['om', 'orange_money'], ['orange', 'orange_money'],
@@ -228,7 +257,9 @@ function matchPhrase(tokens: Token[], phrase: string): Token[] | null {
   const words = phrase.split(' ');
   for (let i = 0; i + words.length <= tokens.length; i++) {
     const slice = tokens.slice(i, i + words.length);
-    if (slice.every((t, k) => !t.used && (t.norm === words[k] || t.norm === `${words[k]}s` || `${t.norm}s` === words[k]))) {
+    // « l'urgence » correspond à « urgence » (élision ignorée).
+    const matches = (norm: string, word: string | undefined) => norm === word || norm === `${word}s` || `${norm}s` === word;
+    if (slice.every((t, k) => !t.used && (matches(t.norm, words[k]) || matches(t.norm.replace(/^[cdjlmnst]'/, ''), words[k])))) {
       return slice;
     }
   }
@@ -306,6 +337,7 @@ export function parseQuickEntry(segment: string, categories: readonly Category[]
   const capitalizedNote = note ? note.charAt(0).toLocaleUpperCase('fr-FR') + note.slice(1) : '';
   return {
     ok: true,
+    kind: 'expense',
     entry: {
       amount,
       categoryId,
@@ -318,12 +350,108 @@ export function parseQuickEntry(segment: string, categories: readonly Category[]
   };
 }
 
+function capitalize(text: string): string {
+  return text ? text.charAt(0).toLocaleUpperCase('fr-FR') + text.slice(1) : '';
+}
+
+/** Objectif cité dans la phrase (nom complet, ou un de ses mots d'au moins 4 lettres). */
+function extractGoal(tokens: Token[], goals: readonly SavingsGoal[]): string | null {
+  let best: { id: string; tokens: Token[] } | null = null;
+  for (const goal of goals) {
+    const name = normalizeText(goal.name).replace(/[’']/g, "'");
+    for (const phrase of [name, ...name.split(/[ ']/).filter((w) => w.length >= 4)]) {
+      const match = matchPhrase(tokens, phrase);
+      if (match && (!best || match.length > best.tokens.length)) best = { id: goal.id, tokens: match };
+    }
+  }
+  if (!best) return null;
+  for (const t of best.tokens) t.used = true;
+  return best.id;
+}
+
+/** Type d'opération décrit par un morceau de phrase. */
+export function classifySegment(segment: string, goals: readonly SavingsGoal[] = []): 'expense' | MoneyEntry['kind'] {
+  const words = tokenize(segment).map((t) => t.norm);
+  const has = (set: ReadonlySet<string> | ReadonlyMap<string, string>) => words.some((w) => set.has(w));
+  const mentionsGoal = extractGoal(tokenize(segment), goals) !== null;
+  if (has(WITHDRAW_WORDS) && (has(SAVING_WORDS) || mentionsGoal)) return 'withdrawal';
+  if (has(SAVING_WORDS)) return 'saving';
+  if (has(INCOME_WORDS)) return 'income';
+  return 'expense';
+}
+
+export function parseMoneyEntry(
+  segment: string,
+  kind: MoneyEntry['kind'],
+  goals: readonly SavingsGoal[],
+  today: ISODate,
+): SegmentResult {
+  const tokens = tokenize(segment);
+  const date = extractDate(tokens, today);
+  const amount = extractAmount(tokens);
+  if (amount === null) {
+    const example = { income: 'salaire 250000', saving: 'épargne 5000 tabaski', withdrawal: 'retrait 5000 tabaski' }[kind];
+    return { ok: false, source: segment, error: `Je n'ai pas trouvé de montant dans « ${segment} ». Exemple : « ${example} ».` };
+  }
+  extractPayment(tokens);
+  let incomeLabel = '';
+  let incomeFound = false;
+  for (const t of tokens) {
+    if (t.used) continue;
+    if (SAVING_WORDS.has(t.norm) || WITHDRAW_WORDS.has(t.norm)) t.used = true;
+    // Seul le premier mot de revenu sert d'origine : « salaire 30000 prime » garde « Prime » en note.
+    const label = INCOME_WORDS.get(t.norm);
+    if (kind === 'income' && label !== undefined && !incomeFound) {
+      t.used = true;
+      incomeFound = true;
+      incomeLabel = label;
+    }
+  }
+  let goalId = kind === 'income' ? null : extractGoal(tokens, goals);
+  const rest = capitalize(
+    tokens
+      .filter((t) => !t.used && !STOPWORDS.has(t.norm) && !MONEY_STOPWORDS.has(t.norm) && !CURRENCY.has(t.norm))
+      .map((t) => t.raw)
+      .join(' ')
+      .trim(),
+  );
+  let label = '';
+  let note = rest;
+  if (kind === 'income') {
+    label = incomeLabel || rest || 'Revenu';
+    note = incomeLabel ? rest : '';
+  } else if (goalId === null) {
+    // Un seul objectif et rien d'autre de précisé : c'est forcément lui.
+    if (rest === '' && goals.length === 1) goalId = goals[0]!.id;
+    label = rest;
+    note = '';
+  }
+  return {
+    ok: true,
+    kind: 'money',
+    entry: { kind, amount, date: date > today ? today : date, goalId, label, note, source: segment },
+  };
+}
+
 /** Comprend ce que l'utilisateur demande à l'assistant. */
-export function interpretMessage(text: string, categories: readonly Category[], today: ISODate): AssistantIntent {
+export function interpretMessage(
+  text: string,
+  categories: readonly Category[],
+  today: ISODate,
+  goals: readonly SavingsGoal[] = [],
+): AssistantIntent {
   const normalized = normalizeText(text);
   if (normalized === '') return { kind: 'empty' };
   if (/^(aide|help|\?|comment (ca|ça) marche|exemples?)\s*\??$/.test(normalized)) return { kind: 'help' };
   const hasNumber = /\d/.test(normalized);
-  if (!hasNumber && /(combien|total|bilan|resume|depense|reste|budget)/.test(normalized)) return { kind: 'summary' };
-  return { kind: 'entries', results: splitEntries(text).map((s) => parseQuickEntry(s, categories, today)) };
+  if (!hasNumber && /(combien|total|bilan|resume|depense|reste|budget|epargn|economi|revenu|salaire)/.test(normalized)) {
+    return { kind: 'summary' };
+  }
+  return {
+    kind: 'entries',
+    results: splitEntries(text).map((s) => {
+      const kind = classifySegment(s, goals);
+      return kind === 'expense' ? parseQuickEntry(s, categories, today) : parseMoneyEntry(s, kind, goals, today);
+    }),
+  };
 }

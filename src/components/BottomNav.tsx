@@ -1,11 +1,12 @@
 import type { ComponentType, SVGProps } from 'react';
 import type { Route } from '../hooks/useHashRoute';
-import { HomeIcon, ListIcon, SettingsIcon, WalletIcon } from './Icons';
+import { HomeIcon, ListIcon, PiggyIcon, SettingsIcon, WalletIcon } from './Icons';
 
 const ITEMS: readonly { route: Route; label: string; Icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
   { route: 'accueil', label: 'Accueil', Icon: HomeIcon },
   { route: 'depenses', label: 'Dépenses', Icon: ListIcon },
   { route: 'budgets', label: 'Budgets', Icon: WalletIcon },
+  { route: 'epargne', label: 'Épargne', Icon: PiggyIcon },
   { route: 'reglages', label: 'Réglages', Icon: SettingsIcon },
 ];
 
@@ -15,7 +16,7 @@ export function BottomNav({ current }: { current: Route }) {
       aria-label="Navigation principale"
       className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur dark:border-slate-800 dark:bg-slate-900/95"
     >
-      <ul className="mx-auto grid max-w-lg grid-cols-4">
+      <ul className="mx-auto grid max-w-lg grid-cols-5">
         {ITEMS.map(({ route, label, Icon }) => {
           const active = route === current;
           return (

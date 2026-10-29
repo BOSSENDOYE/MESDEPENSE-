@@ -7,6 +7,7 @@ import { EmptyState } from '../components/EmptyState';
 import { ExpenseRow } from '../components/ExpenseRow';
 import { AlertIcon, PlusIcon } from '../components/Icons';
 import { MonthSwitcher } from '../components/MonthSwitcher';
+import { SavingsSummaryCard } from '../components/savings/SavingsSummaryCard';
 import { ShareBars } from '../components/ShareBars';
 import { StatTile } from '../components/StatTile';
 import { Button, Card, mutedText } from '../components/ui';
@@ -49,7 +50,7 @@ interface HomePageProps {
 }
 
 export function HomePage({ onAdd, onEdit }: HomePageProps) {
-  const { expenses, budgets, totalBudget, getCategory } = useAppData();
+  const { expenses, budgets, totalBudget, savingsBudget, getCategory } = useAppData();
   const [userName] = useUserName();
   const [userPhoto] = useUserPhoto();
   const [month, setMonth] = useState(currentMonthKey);
@@ -77,14 +78,14 @@ export function HomePage({ onAdd, onEdit }: HomePageProps) {
       daily: dailyTotals(monthExpenses, month),
       biggest: largestExpense(monthExpenses),
       recurringCount: monthExpenses.filter((e) => e.recurringId).length,
-      // Budget du mois s'il est défini (toutes dépenses), sinon somme des budgets par catégorie.
-      budgetLabel: totalBudget !== null ? 'Budget du mois' : 'Budget global',
-      budgetLimit: totalBudget ?? progress.reduce((s, b) => s + b.limit, 0),
+      // Budget du mois s'il est défini (toutes dépenses, épargne mise de côté), sinon somme des budgets par catégorie.
+      budgetLabel: totalBudget === null ? 'Budget global' : savingsBudget ? 'Budget à dépenser' : 'Budget du mois',
+      budgetLimit: totalBudget !== null ? Math.max(0, totalBudget - (savingsBudget ?? 0)) : progress.reduce((s, b) => s + b.limit, 0),
       budgetSpent: totalBudget !== null ? total : progress.reduce((s, b) => s + b.spent, 0),
       alerts: progress.filter((b) => b.level !== 'ok').sort((a, b) => b.ratio - a.ratio),
       recent: groupByDay(monthExpenses).flatMap((g) => g.expenses).slice(0, 5),
     };
-  }, [expenses, budgets, totalBudget, month, today]);
+  }, [expenses, budgets, totalBudget, savingsBudget, month, today]);
 
   const prevName = formatMonthName(stats.prevMonth);
   const topCategory = stats.breakdown[0];
@@ -221,6 +222,8 @@ export function HomePage({ onAdd, onEdit }: HomePageProps) {
           }
         />
       </div>
+
+      <SavingsSummaryCard month={month} spent={stats.total} />
 
       {!hasData ? (
         <EmptyState icon="🧾" title="Aucune dépense ce mois-ci" action={<Button onClick={onAdd}>Ajouter une dépense</Button>}>

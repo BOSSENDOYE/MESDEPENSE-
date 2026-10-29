@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 
-export type Route = 'accueil' | 'depenses' | 'budgets' | 'reglages';
+export type Route = 'accueil' | 'depenses' | 'budgets' | 'epargne' | 'reglages';
 
-const ROUTES: readonly Route[] = ['accueil', 'depenses', 'budgets', 'reglages'];
+const ROUTES: readonly Route[] = ['accueil', 'depenses', 'budgets', 'epargne', 'reglages'];
 
 function isRoute(value: string): value is Route {
   return (ROUTES as readonly string[]).includes(value);

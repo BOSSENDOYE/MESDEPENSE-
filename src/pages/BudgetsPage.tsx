@@ -5,18 +5,22 @@ import { CategoryIcon } from '../components/CategoryIcon';
 import { Modal } from '../components/Modal';
 import { MonthSwitcher } from '../components/MonthSwitcher';
 import { Button, Card, FieldError, PageHeader, mutedText } from '../components/ui';
-import { removeBudget, setBudget, setTotalBudget } from '../db/budgets';
+import { removeBudget, setBudget, setSavingsBudget, setTotalBudget } from '../db/budgets';
 import { useAppData } from '../hooks/useAppData';
 import { useToast } from '../hooks/useToast';
 import type { Category } from '../types';
 import { currentMonthKey, formatMonthName } from '../utils/dates';
 import { formatFCFA, formatPercent, validateAmount } from '../utils/money';
+import { savedInMonth } from '../utils/savings';
 import { budgetAllocation, expensesInMonth, shareOfTotal, sumAmounts, totalsByCategory } from '../utils/stats';
 
-type Editing = { kind: 'total' } | { kind: 'category'; category: Category };
+type Editing = { kind: 'total' } | { kind: 'savings' } | { kind: 'category'; category: Category };
+
+/** Couleur de la part « épargne » dans la barre de répartition. */
+const SAVINGS_COLOR = '#0f766e';
 
 export function BudgetsPage() {
-  const { expenses, categories, budgets, totalBudget } = useAppData();
+  const { expenses, categories, budgets, totalBudget, savingsBudget, movements } = useAppData();
   const [month, setMonth] = useState(currentMonthKey);
   const [editing, setEditing] = useState<Editing | null>(null);
 
@@ -29,7 +33,8 @@ export function BudgetsPage() {
     .sort((a, b) => (limits.get(b.id) ?? 0) - (limits.get(a.id) ?? 0));
   const unbudgeted = categories.filter((c) => !limits.has(c.id));
   const allocatedBudgets = budgets.filter((b) => categories.some((c) => c.id === b.categoryId));
-  const allocation = totalBudget !== null ? budgetAllocation(totalBudget, allocatedBudgets) : null;
+  const savings = totalBudget !== null ? (savingsBudget ?? 0) : 0;
+  const allocation = totalBudget !== null ? budgetAllocation(totalBudget, allocatedBudgets, savings) : null;
   const sumLimits = budgeted.reduce((sum, c) => sum + (limits.get(c.id) ?? 0), 0);
   const spentInBudgeted = sumAmounts(budgeted.map((c) => ({ amount: spentByCategory.get(c.id) ?? 0 })));
 
@@ -65,8 +70,10 @@ export function BudgetsPage() {
           spent={sumAmounts(monthExpenses)}
           monthName={formatMonthName(month)}
           allocation={allocation}
+          savedThisMonth={savedInMonth(movements, month)}
           segments={budgeted.map((c) => ({ category: c, limit: limits.get(c.id) ?? 0 }))}
           onEdit={() => setEditing({ kind: 'total' })}
+          onEditSavings={() => setEditing({ kind: 'savings' })}
         />
       )}
 
@@ -139,14 +146,22 @@ export function BudgetsPage() {
       )}
 
       {editing?.kind === 'total' && (
-        <TotalBudgetEditor current={totalBudget} allocated={allocation?.allocated ?? sumLimits} onClose={() => setEditing(null)} />
+        <TotalBudgetEditor current={totalBudget} allocated={(allocation?.allocated ?? sumLimits) + savings} onClose={() => setEditing(null)} />
+      )}
+      {editing?.kind === 'savings' && totalBudget !== null && (
+        <SavingsBudgetEditor
+          current={savingsBudget}
+          totalBudget={totalBudget}
+          allocated={allocation?.allocated ?? 0}
+          onClose={() => setEditing(null)}
+        />
       )}
       {editing?.kind === 'category' && (
         <BudgetEditor
           category={editing.category}
           current={limits.get(editing.category.id) ?? null}
           totalBudget={totalBudget}
-          allocatedOthers={sumLimits - (limits.get(editing.category.id) ?? 0)}
+          allocatedOthers={savings + sumLimits - (limits.get(editing.category.id) ?? 0)}
           onClose={() => setEditing(null)}
         />
       )}
@@ -158,14 +173,18 @@ interface TotalBudgetCardProps {
   total: number;
   spent: number;
   monthName: string;
-  allocation: { allocated: number; remaining: number };
+  allocation: { savings: number; allocated: number; remaining: number };
+  savedThisMonth: number;
   segments: { category: Category; limit: number }[];
   onEdit: () => void;
+  onEditSavings: () => void;
 }
 
-/** Budget total du mois : dépenses face au total, puis répartition entre les catégories. */
-function TotalBudgetCard({ total, spent, monthName, allocation, segments, onEdit }: TotalBudgetCardProps) {
-  const scale = Math.max(total, allocation.allocated);
+/** Budget total du mois : épargne mise de côté, dépenses face au reste, puis répartition entre les catégories. */
+function TotalBudgetCard({ total, spent, monthName, allocation, savedThisMonth, segments, onEdit, onEditSavings }: TotalBudgetCardProps) {
+  const scale = Math.max(total, allocation.savings + allocation.allocated);
+  const spendable = Math.max(0, total - allocation.savings);
+  const saved = Math.max(0, savedThisMonth);
   return (
     <Card>
       <div className="flex items-start justify-between gap-2">
@@ -181,8 +200,40 @@ function TotalBudgetCard({ total, spent, monthName, allocation, segments, onEdit
       <div className="mt-3">
         <p className={`mb-1 text-sm ${mutedText}`}>
           Dépensé en {monthName} : <strong className="text-slate-900 dark:text-slate-100">{formatFCFA(spent)}</strong>
+          {allocation.savings > 0 && <> sur {formatFCFA(spendable)} à dépenser</>}
         </p>
-        <BudgetBar spent={spent} limit={total} label="Budget du mois" />
+        <BudgetBar spent={spent} limit={spendable} label="Budget à dépenser du mois" />
+      </div>
+
+      <div className="mt-4 flex items-center gap-3 rounded-2xl bg-teal-50 p-3 dark:bg-teal-950">
+        <span aria-hidden="true" className="text-2xl">
+          🐷
+        </span>
+        <div className="min-w-0 flex-1">
+          {allocation.savings > 0 ? (
+            <>
+              <p className="font-semibold text-teal-950 dark:text-teal-50">
+                Épargne : {formatFCFA(allocation.savings)}{' '}
+                <span className="font-normal">({formatPercent((allocation.savings / total) * 100)})</span>
+              </p>
+              <p className="text-sm text-teal-900 dark:text-teal-100">
+                {saved >= allocation.savings
+                  ? `✅ Mis de côté en ${monthName} : ${formatFCFA(saved)}`
+                  : `Mis de côté en ${monthName} : ${formatFCFA(saved)} · reste ${formatFCFA(allocation.savings - saved)}`}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="font-semibold text-teal-950 dark:text-teal-50">Payez-vous en premier</p>
+              <p className="text-sm text-teal-900 dark:text-teal-100">
+                Réservez une part pour l'épargne avant de répartir le reste.
+              </p>
+            </>
+          )}
+        </div>
+        <Button variant="ghost" onClick={onEditSavings} aria-label="Part d'épargne du budget">
+          {allocation.savings > 0 ? 'Modifier' : 'Définir'}
+        </Button>
       </div>
 
       <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800">
@@ -197,10 +248,19 @@ function TotalBudgetCard({ total, spent, monthName, allocation, segments, onEdit
         <div
           className="mt-2 flex h-4 w-full gap-[2px] overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800"
           role="img"
-          aria-label={`Répartition : ${segments.map((s) => `${s.category.name} ${formatFCFA(s.limit)}`).join(', ')}${
+          aria-label={`Répartition : ${allocation.savings > 0 ? `épargne ${formatFCFA(allocation.savings)}, ` : ''}${segments
+            .map((s) => `${s.category.name} ${formatFCFA(s.limit)}`)
+            .join(', ')}${
             allocation.remaining > 0 ? `, reste à répartir ${formatFCFA(allocation.remaining)}` : ''
           }`}
         >
+          {allocation.savings > 0 && (
+            <div
+              className="h-full first:rounded-l-full"
+              style={{ width: `${(allocation.savings / scale) * 100}%`, backgroundColor: SAVINGS_COLOR }}
+              title={`Épargne : ${formatFCFA(allocation.savings)}`}
+            />
+          )}
           {segments.map((s) => (
             <div
               key={s.category.id}
@@ -211,8 +271,14 @@ function TotalBudgetCard({ total, spent, monthName, allocation, segments, onEdit
           ))}
         </div>
 
-        {segments.length > 0 && (
+        {(segments.length > 0 || allocation.savings > 0) && (
           <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs" aria-hidden="true">
+            {allocation.savings > 0 && (
+              <li className="flex items-center gap-1">
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: SAVINGS_COLOR }} />
+                🐷 Épargne · {formatPercent((allocation.savings / total) * 100)}
+              </li>
+            )}
             {segments.map((s) => (
               <li key={s.category.id} className="flex items-center gap-1">
                 <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: s.category.color }} />
@@ -300,6 +366,111 @@ function TotalBudgetEditor({ current, allocated, onClose }: { current: number | 
         {check.ok && allocated > check.value && (
           <p className="rounded-2xl bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-100">
             ⚠ C'est moins que ce que vous avez déjà réparti ({formatFCFA(allocated)}) : pensez à ajuster vos catégories.
+          </p>
+        )}
+        {error && <FieldError>{error}</FieldError>}
+      </form>
+    </Modal>
+  );
+}
+
+const SAVINGS_PERCENT_CHOICES = [5, 10, 15, 20, 25] as const;
+
+interface SavingsBudgetEditorProps {
+  current: number | null;
+  totalBudget: number;
+  /** Montant déjà réparti entre les catégories. */
+  allocated: number;
+  onClose: () => void;
+}
+
+/** Part du budget du mois mise de côté pour l'épargne, avant la répartition par catégorie. */
+function SavingsBudgetEditor({ current, totalBudget, allocated, onClose }: SavingsBudgetEditorProps) {
+  const { reload } = useAppData();
+  const { showToast } = useToast();
+  const [value, setValue] = useState(current === null ? '' : String(current));
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const check = validateAmount(value);
+
+  async function run(amount: number | null, message: string) {
+    try {
+      await setSavingsBudget(amount);
+      await reload();
+      showToast(message);
+      onClose();
+    } catch (err) {
+      console.error(err);
+      setError("L'enregistrement a échoué. Réessayez.");
+    }
+  }
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setSubmitted(true);
+    if (!check.ok) return;
+    void run(check.value, `Épargne du mois : ${formatFCFA(check.value)}.`);
+  }
+
+  return (
+    <Modal
+      title="🐷 Épargne du mois"
+      onClose={onClose}
+      footer={
+        <div className="flex gap-2">
+          {current !== null && (
+            <Button variant="secondary" onClick={() => void run(null, "Part d'épargne retirée.")}>
+              Retirer
+            </Button>
+          )}
+          <Button type="submit" form="formulaire-epargne-budget" block>
+            Enregistrer
+          </Button>
+        </div>
+      }
+    >
+      <form id="formulaire-epargne-budget" onSubmit={handleSubmit} noValidate className="space-y-4">
+        <p className={`text-sm ${mutedText}`}>
+          Ce montant est mis de côté dès le début du mois. Ce n'est pas une dépense : le reste du budget
+          {check.ok ? ` (${formatFCFA(Math.max(0, totalBudget - check.value))})` : ''} est ce que vous pouvez dépenser.
+        </p>
+        <AmountInput
+          id="epargne-budget"
+          label="Montant à épargner chaque mois"
+          value={value}
+          onChange={setValue}
+          error={submitted && !check.ok ? check.error : null}
+        />
+        <fieldset>
+          <legend className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+            Part du budget du mois ({formatFCFA(totalBudget)})
+          </legend>
+          <div className="mt-1 flex flex-wrap gap-2">
+            {SAVINGS_PERCENT_CHOICES.map((p) => {
+              const amount = shareOfTotal(totalBudget, p);
+              const selected = check.ok && check.value === amount;
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => setValue(String(amount))}
+                  className={`min-h-11 rounded-full border-2 px-4 text-sm font-semibold ${
+                    selected
+                      ? 'border-emerald-700 bg-emerald-50 text-emerald-900 dark:border-emerald-400 dark:bg-emerald-950 dark:text-emerald-100'
+                      : 'border-slate-300 text-slate-700 dark:border-slate-700 dark:text-slate-300'
+                  }`}
+                >
+                  {p} %
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
+        {check.ok && check.value + allocated > totalBudget && (
+          <p className="rounded-2xl bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-100">
+            ⚠ Avec vos catégories ({formatFCFA(allocated)}), la répartition dépassera votre budget du mois de{' '}
+            {formatFCFA(check.value + allocated - totalBudget)}.
           </p>
         )}
         {error && <FieldError>{error}</FieldError>}

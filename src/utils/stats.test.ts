@@ -114,7 +114,11 @@ describe('budget total du mois', () => {
   ];
 
   it('calcule le reste à répartir', () => {
-    expect(budgetAllocation(100000, budgets)).toEqual({ total: 100000, allocated: 60000, remaining: 40000 });
+    expect(budgetAllocation(100000, budgets)).toEqual({ total: 100000, savings: 0, allocated: 60000, remaining: 40000 });
+  });
+
+  it('met l’épargne de côté avant de répartir', () => {
+    expect(budgetAllocation(100000, budgets, 10000)).toEqual({ total: 100000, savings: 10000, allocated: 60000, remaining: 30000 });
   });
 
   it('signale une répartition supérieure au total', () => {

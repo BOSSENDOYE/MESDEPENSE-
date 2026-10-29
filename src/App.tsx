@@ -15,6 +15,7 @@ import { useToast } from './hooks/useToast';
 import { BudgetsPage } from './pages/BudgetsPage';
 import { ExpensesPage } from './pages/ExpensesPage';
 import { HomePage } from './pages/HomePage';
+import { SavingsPage } from './pages/SavingsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import type { Expense } from './types';
 import { formatFCFA, validateAmount } from './utils/money';
@@ -134,6 +135,7 @@ function AppShell() {
         {route === 'accueil' && <HomePage onAdd={openNew} onEdit={openEdit} />}
         {route === 'depenses' && <ExpensesPage onAdd={openNew} onEdit={openEdit} />}
         {route === 'budgets' && <BudgetsPage />}
+        {route === 'epargne' && <SavingsPage />}
         {route === 'reglages' && <SettingsPage />}
       </main>
 

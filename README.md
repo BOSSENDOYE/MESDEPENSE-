@@ -39,6 +39,10 @@ npm run generate-pwa-assets    # régénérer favicon et icônes PWA depuis bran
 - **Catégories** personnalisables (nom, emoji, couleur). Supprimer une catégorie déplace ses
   dépenses vers « Autres ».
 - **Budgets mensuels** par catégorie, avec alerte à 80 % (orange) et 100 % (rouge).
+- **Épargne** : objectifs (montant visé, échéance, effort mensuel conseillé), versements et retraits,
+  versement automatique mensuel, part d'épargne réservée dans le budget du mois.
+- **Revenus** et **reste à vivre** du mois (revenus − dépenses − épargne), taux d'épargne.
+- **Assistant 💬** hors-ligne : « taxi 2000 », « épargne 5000 tabaski », « salaire 250000 »…
 - **Dépenses récurrentes** créées automatiquement à l'ouverture de l'app (les mois manqués
   sont rattrapés ; jour 31 → dernier jour des mois courts).
 - **Export CSV** (séparateur `;`, compatible Excel français) et **sauvegarde/restauration JSON**.
@@ -53,7 +57,7 @@ src/
   utils/       Fonctions pures testées : stats, récurrences, CSV, sauvegarde, formats
   hooks/       Contexte des données, toasts, navigation, thème
   components/  Composants d'interface (formulaire, graphiques, modales…)
-  pages/       Accueil, Dépenses, Budgets, Réglages
+  pages/       Accueil, Dépenses, Budgets, Épargne, Réglages
 ```
 
 ## Modèle de données (IndexedDB `mes-depenses`)
@@ -64,6 +68,10 @@ src/
 | `categories` | id, name, color, icon, *order* |
 | `budgets`    | categoryId (clé), monthlyLimit |
 | `recurring`  | id, amount, categoryId, paymentMethod, note, dayOfMonth, active, *lastRunMonth* |
+| `settings`   | key (`totalBudget`, `savingsBudget`), value |
+| `goals`      | id, name, icon, target, deadline (`yyyy-MM`), createdAt, auto? (amount, dayOfMonth, active, lastRunMonth) |
+| `movements`  | id, goalId, amount (> 0 versement, < 0 retrait), date, note, createdAt, auto? |
+| `incomes`    | id, amount, date, source, note, createdAt |
 
 Champs ajoutés au cahier des charges (en italique) : `order` pour l'ordre d'affichage des catégories,
 `lastRunMonth` pour éviter les doublons de récurrences, `recurringId` pour repérer les dépenses générées.

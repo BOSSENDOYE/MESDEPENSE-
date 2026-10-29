@@ -4,7 +4,7 @@ import { useAppData } from '../../hooks/useAppData';
 import { useToast } from '../../hooks/useToast';
 import type { AppDataSnapshot } from '../../types';
 import { createBackup, parseBackup } from '../../utils/backup';
-import { expensesToCsv } from '../../utils/csv';
+import { expensesToCsv, moneyToCsv } from '../../utils/csv';
 import { formatShortDate, todayISO } from '../../utils/dates';
 import { downloadFile } from '../../utils/download';
 import { getLastBackupDate, setLastBackupDate } from '../../utils/storage';
@@ -15,7 +15,7 @@ import { Button, Card, FieldError, mutedText } from '../ui';
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
 export function BackupSection() {
-  const { expenses, categories, reload } = useAppData();
+  const { expenses, categories, incomes, movements, goals, reload } = useAppData();
   const { showToast } = useToast();
   const fileInput = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<AppDataSnapshot | null>(null);
@@ -29,6 +29,15 @@ export function BackupSection() {
     }
     // BOM UTF-8 : Excel affiche correctement les accents.
     downloadFile(`depenses-${todayISO()}.csv`, `﻿${expensesToCsv(expenses, categories)}`, 'text/csv;charset=utf-8');
+    showToast('Export CSV téléchargé.');
+  }
+
+  function exportMoneyCsv() {
+    if (incomes.length === 0 && movements.length === 0) {
+      showToast('Aucun revenu ni versement à exporter.', 'info');
+      return;
+    }
+    downloadFile(`revenus-epargne-${todayISO()}.csv`, `﻿${moneyToCsv(incomes, movements, goals)}`, 'text/csv;charset=utf-8');
     showToast('Export CSV téléchargé.');
   }
 
@@ -85,6 +94,9 @@ export function BackupSection() {
         <Button onClick={() => void exportJson()}>Sauvegarder (JSON)</Button>
         <Button variant="secondary" onClick={exportCsv}>
           Exporter les dépenses (CSV)
+        </Button>
+        <Button variant="secondary" onClick={exportMoneyCsv}>
+          Exporter revenus et épargne (CSV)
         </Button>
         <Button variant="secondary" onClick={() => fileInput.current?.click()}>
           Restaurer une sauvegarde…

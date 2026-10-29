@@ -1,5 +1,5 @@
 import { deleteDB, openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import type { Budget, Category, Expense, RecurringExpense } from '../types';
+import type { Budget, Category, Expense, Income, RecurringExpense, SavingsGoal, SavingsMovement } from '../types';
 import { DEFAULT_CATEGORIES } from '../utils/constants';
 
 export interface ExpensesDB extends DBSchema {
@@ -25,13 +25,28 @@ export interface ExpensesDB extends DBSchema {
     key: SettingKey;
     value: { key: SettingKey; value: number };
   };
+  goals: {
+    key: string;
+    value: SavingsGoal;
+  };
+  movements: {
+    key: string;
+    value: SavingsMovement;
+    indexes: { 'by-goal': string };
+  };
+  incomes: {
+    key: string;
+    value: Income;
+    indexes: { 'by-date': string };
+  };
 }
 
-export type SettingKey = 'totalBudget';
+export type SettingKey = 'totalBudget' | 'savingsBudget';
 
 const DB_NAME = 'mes-depenses';
 // v1 : création des stores · v2 : types (sous-catégories) dans chaque catégorie · v3 : réglages (budget total)
-const DB_VERSION = 3;
+// v4 : épargne (objectifs, mouvements) et revenus
+const DB_VERSION = 4;
 
 let dbPromise: Promise<IDBPDatabase<ExpensesDB>> | null = null;
 
@@ -59,6 +74,11 @@ export function getDB(): Promise<IDBPDatabase<ExpensesDB>> {
           });
         }
         if (oldVersion < 3) db.createObjectStore('settings', { keyPath: 'key' });
+        if (oldVersion < 4) {
+          db.createObjectStore('goals', { keyPath: 'id' });
+          db.createObjectStore('movements', { keyPath: 'id' }).createIndex('by-goal', 'goalId');
+          db.createObjectStore('incomes', { keyPath: 'id' }).createIndex('by-date', 'date');
+        }
       },
       blocking() {
         // Une nouvelle version de l'app s'ouvre dans un autre onglet : on libère la base.
