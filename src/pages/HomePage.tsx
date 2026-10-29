@@ -89,11 +89,20 @@ export function HomePage({ onAdd, onEdit }: HomePageProps) {
   return (
     <div className="space-y-4">
       <header className="flex items-end justify-between gap-2 pb-1 pt-2">
-        <div>
-          <p className={`text-sm ${mutedText}`}>{greetingLine(userName)}</p>
-          <h1 className="text-2xl font-bold">Tableau de bord</h1>
+        <div className="flex items-center gap-3">
+          <img
+            src="/logo-app.png"
+            alt=""
+            width={44}
+            height={44}
+            className="h-11 w-11 rounded-2xl bg-white object-contain p-1 shadow-sm ring-1 ring-slate-200 dark:ring-slate-800"
+          />
+          <div>
+            <p className={`text-sm ${mutedText}`}>{greetingLine(userName)}</p>
+            <h1 className="whitespace-nowrap text-xl font-bold">Tableau de bord</h1>
+          </div>
         </div>
-        <p className={`rounded-full bg-white px-3 py-1 text-xs font-medium ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800 ${mutedText}`}>
+        <p className={`shrink-0 whitespace-nowrap rounded-full bg-white px-3 py-1 text-xs font-medium ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800 ${mutedText}`}>
           {formatLongDate(today)}
         </p>
       </header>

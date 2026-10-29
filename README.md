@@ -19,7 +19,8 @@ npm test                 # tests unitaires (calculs, récurrences, import/export
 npm run typecheck        # vérification TypeScript
 npm run build            # build de production dans dist/
 npm run preview          # servir le build (PWA + service worker actifs)
-npm run generate-pwa-assets  # régénérer les icônes PNG depuis public/icon.svg
+node scripts/prepare-logo.mjs   # détourer public/logo.png → branding/logo-source.png + public/logo-app.png
+npm run generate-pwa-assets    # régénérer favicon et icônes PWA depuis branding/logo-source.png
 ```
 
 > Le service worker (mode hors-ligne) n'est actif qu'avec `npm run build` puis `npm run preview`,

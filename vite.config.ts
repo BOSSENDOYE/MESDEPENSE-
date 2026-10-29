@@ -9,7 +9,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       // Enregistrement fait dans src/pwa.ts (pour afficher « Prête hors-ligne »).
       injectRegister: false,
-      includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png', 'icon.svg'],
+      includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png', 'logo-app.png'],
       manifest: {
         name: 'Mes Dépenses',
         short_name: 'Dépenses',
@@ -31,6 +31,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // Logo original (1,4 Mo) : inutile hors-ligne, l'app utilise logo-app.png.
+        globIgnores: ['**/logo.png'],
         navigateFallback: 'index.html',
         cleanupOutdatedCaches: true,
         clientsClaim: true,

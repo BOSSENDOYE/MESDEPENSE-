@@ -22,17 +22,25 @@ export function LockLayout({ eyebrow, title, caption, avatar, children, footer }
         <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 -left-16 h-48 w-48 rounded-full bg-teal-300/10" />
 
         <div className="relative mx-auto flex max-w-sm items-center gap-2 text-sm font-semibold text-emerald-50">
-          <img src="/icon.svg" alt="" width={24} height={24} className="h-6 w-6 rounded-md" />
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white p-0.5 shadow-sm">
+            <img src="/logo-app.png" alt="" width={24} height={24} className="h-full w-full object-contain" />
+          </span>
           Mes Dépenses
         </div>
 
         <div className="relative mx-auto mt-[clamp(0.75rem,2.5dvh,1.5rem)] flex max-w-sm flex-col items-center text-center">
-          <div
-            aria-hidden="true"
-            className="flex h-[clamp(3.5rem,9dvh,5rem)] w-[clamp(3.5rem,9dvh,5rem)] items-center justify-center rounded-full bg-white/15 text-[clamp(1.5rem,4dvh,2.25rem)] font-bold ring-4 ring-white/25 backdrop-blur"
-          >
-            {avatar ?? <img src="/icon.svg" alt="" width={40} height={40} className="h-3/5 w-3/5" />}
-          </div>
+          {avatar ? (
+            <div
+              aria-hidden="true"
+              className="flex h-[clamp(3.5rem,9dvh,5rem)] w-[clamp(3.5rem,9dvh,5rem)] items-center justify-center rounded-full bg-white/15 text-[clamp(1.5rem,4dvh,2.25rem)] font-bold ring-4 ring-white/25 backdrop-blur"
+            >
+              {avatar}
+            </div>
+          ) : (
+            <div className="flex h-[clamp(3.5rem,9dvh,5rem)] w-[clamp(3.5rem,9dvh,5rem)] items-center justify-center rounded-[1.4rem] bg-white p-2 shadow-lg shadow-emerald-950/30 ring-4 ring-white/25">
+              <img src="/logo-app.png" alt="" width={64} height={64} className="h-full w-full object-contain" />
+            </div>
+          )}
           {eyebrow && <p className="mt-3 text-sm font-medium text-emerald-100">{eyebrow}</p>}
           <h1 className="text-[clamp(1.5rem,3.6dvh,1.875rem)] font-bold leading-tight tracking-tight">{title}</h1>
           {caption && <p className="mt-1 text-xs font-medium text-emerald-100/90">{caption}</p>}
