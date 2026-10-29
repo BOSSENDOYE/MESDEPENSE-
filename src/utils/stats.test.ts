@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Expense } from '../types';
 import {
   availableMonths,
+  budgetAllocation,
   budgetLevel,
   budgetProgress,
   categoryBreakdown,
@@ -13,6 +14,7 @@ import {
   monthPace,
   paymentBreakdown,
   percentChange,
+  shareOfTotal,
   sumAmounts,
   totalUpToDay,
 } from './stats';
@@ -102,6 +104,27 @@ describe('budgets', () => {
   it('calcule la progression par catégorie', () => {
     const [p] = budgetProgress([{ categoryId: 'transport', monthlyLimit: 20000 }], expensesInMonth(data, '2026-10'));
     expect(p).toMatchObject({ spent: 17500, remaining: 2500, level: 'warning' });
+  });
+});
+
+describe('budget total du mois', () => {
+  const budgets = [
+    { categoryId: 'transport', monthlyLimit: 20000 },
+    { categoryId: 'alimentation', monthlyLimit: 40000 },
+  ];
+
+  it('calcule le reste à répartir', () => {
+    expect(budgetAllocation(100000, budgets)).toEqual({ total: 100000, allocated: 60000, remaining: 40000 });
+  });
+
+  it('signale une répartition supérieure au total', () => {
+    expect(budgetAllocation(50000, budgets).remaining).toBe(-10000);
+  });
+
+  it('convertit un pourcentage en montant arrondi à 500 FCFA', () => {
+    expect(shareOfTotal(100000, 20)).toBe(20000);
+    expect(shareOfTotal(87300, 10)).toBe(8500);
+    expect(shareOfTotal(1000, 1)).toBe(500);
   });
 });
 

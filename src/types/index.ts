@@ -68,6 +68,8 @@ export interface AppDataSnapshot {
   categories: Category[];
   budgets: Budget[];
   recurring: RecurringExpense[];
+  /** Budget total du mois (FCFA), à répartir entre les catégories ; null = non défini. */
+  totalBudget: number | null;
 }
 
 export interface BackupFile extends AppDataSnapshot {

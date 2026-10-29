@@ -48,7 +48,7 @@ interface HomePageProps {
 }
 
 export function HomePage({ onAdd, onEdit }: HomePageProps) {
-  const { expenses, budgets, getCategory } = useAppData();
+  const { expenses, budgets, totalBudget, getCategory } = useAppData();
   const [userName] = useUserName();
   const [month, setMonth] = useState(currentMonthKey);
   const today = todayISO();
@@ -75,12 +75,14 @@ export function HomePage({ onAdd, onEdit }: HomePageProps) {
       daily: dailyTotals(monthExpenses, month),
       biggest: largestExpense(monthExpenses),
       recurringCount: monthExpenses.filter((e) => e.recurringId).length,
-      budgetLimit: progress.reduce((s, b) => s + b.limit, 0),
-      budgetSpent: progress.reduce((s, b) => s + b.spent, 0),
+      // Budget du mois s'il est défini (toutes dépenses), sinon somme des budgets par catégorie.
+      budgetLabel: totalBudget !== null ? 'Budget du mois' : 'Budget global',
+      budgetLimit: totalBudget ?? progress.reduce((s, b) => s + b.limit, 0),
+      budgetSpent: totalBudget !== null ? total : progress.reduce((s, b) => s + b.spent, 0),
       alerts: progress.filter((b) => b.level !== 'ok').sort((a, b) => b.ratio - a.ratio),
       recent: groupByDay(monthExpenses).flatMap((g) => g.expenses).slice(0, 5),
     };
-  }, [expenses, budgets, month, today]);
+  }, [expenses, budgets, totalBudget, month, today]);
 
   const prevName = formatMonthName(stats.prevMonth);
   const topCategory = stats.breakdown[0];
@@ -156,7 +158,7 @@ export function HomePage({ onAdd, onEdit }: HomePageProps) {
         {stats.budgetLimit > 0 && (
           <div className="relative mt-4">
             <div className="flex items-baseline justify-between text-sm text-emerald-50">
-              <span>Budget global</span>
+              <span>{stats.budgetLabel}</span>
               <span className="tabular-nums">
                 {formatFCFA(stats.budgetSpent)} / {formatFCFA(stats.budgetLimit)}
               </span>
@@ -164,7 +166,7 @@ export function HomePage({ onAdd, onEdit }: HomePageProps) {
             <div
               className="mt-1 h-2.5 overflow-hidden rounded-full bg-white/20"
               role="progressbar"
-              aria-label="Budget global"
+              aria-label={stats.budgetLabel}
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={Math.min(100, Math.round((stats.budgetSpent / stats.budgetLimit) * 100))}

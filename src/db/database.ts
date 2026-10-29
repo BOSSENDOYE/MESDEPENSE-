@@ -20,11 +20,18 @@ export interface ExpensesDB extends DBSchema {
     key: string;
     value: RecurringExpense;
   };
+  /** Réglages globaux (ex. budget total du mois). */
+  settings: {
+    key: SettingKey;
+    value: { key: SettingKey; value: number };
+  };
 }
 
+export type SettingKey = 'totalBudget';
+
 const DB_NAME = 'mes-depenses';
-// v1 : création des stores · v2 : types (sous-catégories) dans chaque catégorie
-const DB_VERSION = 2;
+// v1 : création des stores · v2 : types (sous-catégories) dans chaque catégorie · v3 : réglages (budget total)
+const DB_VERSION = 3;
 
 let dbPromise: Promise<IDBPDatabase<ExpensesDB>> | null = null;
 
@@ -51,6 +58,7 @@ export function getDB(): Promise<IDBPDatabase<ExpensesDB>> {
             }
           });
         }
+        if (oldVersion < 3) db.createObjectStore('settings', { keyPath: 'key' });
       },
       blocking() {
         // Une nouvelle version de l'app s'ouvre dans un autre onglet : on libère la base.

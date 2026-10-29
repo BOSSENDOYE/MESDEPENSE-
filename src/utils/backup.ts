@@ -163,6 +163,12 @@ export function parseBackup(json: unknown): Result<AppDataSnapshot> {
     return { ok: false, error: `Une donnée fait référence à une catégorie inconnue (« ${orphan.categoryId} »).` };
   }
 
+  // Absent des sauvegardes antérieures au budget total : facultatif.
+  const totalBudget = json.totalBudget === undefined || json.totalBudget === null ? null : json.totalBudget;
+  if (totalBudget !== null && !isAmount(totalBudget)) {
+    return { ok: false, error: 'Budget total du mois incorrect (entier positif attendu).' };
+  }
+
   return {
     ok: true,
     value: {
@@ -170,6 +176,7 @@ export function parseBackup(json: unknown): Result<AppDataSnapshot> {
       expenses: expenses.value,
       budgets: budgets.value,
       recurring: recurring.value,
+      totalBudget,
     },
   };
 }

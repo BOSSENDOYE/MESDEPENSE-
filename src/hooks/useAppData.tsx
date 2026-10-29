@@ -20,7 +20,7 @@ export interface AppDataContextValue extends AppDataSnapshot {
   runRecurring: () => Promise<number>;
 }
 
-const EMPTY: AppDataSnapshot = { expenses: [], categories: [], budgets: [], recurring: [] };
+const EMPTY: AppDataSnapshot = { expenses: [], categories: [], budgets: [], recurring: [], totalBudget: null };
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
 

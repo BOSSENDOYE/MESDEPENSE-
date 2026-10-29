@@ -108,6 +108,25 @@ export function budgetProgress(budgets: readonly Budget[], monthExpenses: readon
   });
 }
 
+export interface BudgetAllocation {
+  total: number;
+  /** Somme des budgets par catégorie. */
+  allocated: number;
+  /** Reste à répartir ; négatif si on a réparti plus que le total. */
+  remaining: number;
+}
+
+/** Répartition du budget total du mois entre les catégories. */
+export function budgetAllocation(total: number, budgets: readonly Budget[]): BudgetAllocation {
+  const allocated = budgets.reduce((sum, b) => sum + b.monthlyLimit, 0);
+  return { total, allocated, remaining: total - allocated };
+}
+
+/** Montant correspondant à un pourcentage du budget total, arrondi à 500 FCFA. */
+export function shareOfTotal(total: number, percent: number): number {
+  return Math.max(500, Math.round((total * percent) / 100 / 500) * 500);
+}
+
 export interface DayGroup {
   date: ISODate;
   total: number;

@@ -28,6 +28,7 @@ const snapshot: AppDataSnapshot = {
   ],
   budgets: [{ categoryId: 'alimentation', monthlyLimit: 50000 }],
   recurring: [],
+  totalBudget: 100000,
 };
 
 describe('sauvegarde JSON', () => {
@@ -52,6 +53,12 @@ describe('sauvegarde JSON', () => {
     const bad = createBackup({ ...snapshot, budgets: [{ categoryId: 'inconnue', monthlyLimit: 10 }] });
     expect(parseBackup(JSON.parse(JSON.stringify(bad))).ok).toBe(false);
   });
+});
+
+it('accepte une ancienne sauvegarde sans budget total', () => {
+  const { totalBudget: _ignored, ...ancienne } = createBackup(snapshot);
+  const result = parseBackup(JSON.parse(JSON.stringify(ancienne)));
+  expect(result.ok && result.value.totalBudget).toBe(null);
 });
 
 describe('export CSV', () => {
