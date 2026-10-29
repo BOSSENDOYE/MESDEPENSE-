@@ -1,0 +1,114 @@
+import { useCallback, useState } from 'react';
+import { BottomNav } from './components/BottomNav';
+import { ExpenseFormModal } from './components/ExpenseFormModal';
+import { PlusIcon } from './components/Icons';
+import { ToastProvider } from './components/ToastProvider';
+import { Button } from './components/ui';
+import { AppDataProvider, useAppData } from './hooks/useAppData';
+import { useHashRoute } from './hooks/useHashRoute';
+import { BudgetsPage } from './pages/BudgetsPage';
+import { ExpensesPage } from './pages/ExpensesPage';
+import { HomePage } from './pages/HomePage';
+import { SettingsPage } from './pages/SettingsPage';
+import type { Expense } from './types';
+import { formatFCFA, validateAmount } from './utils/money';
+import { clearDraft, isDraftMeaningful, loadDraft, NEW_EXPENSE_DRAFT, type ExpenseDraft } from './utils/storage';
+
+export default function App() {
+  return (
+    <ToastProvider>
+      <AppDataProvider>
+        <AppShell />
+      </AppDataProvider>
+    </ToastProvider>
+  );
+}
+
+type EditorState = { open: false } | { open: true; expense: Expense | null };
+
+function readPendingDraft(): ExpenseDraft | null {
+  const draft = loadDraft(NEW_EXPENSE_DRAFT);
+  return draft && isDraftMeaningful(draft) ? draft : null;
+}
+
+function AppShell() {
+  const { status, error } = useAppData();
+  const [route] = useHashRoute();
+  const [editor, setEditor] = useState<EditorState>({ open: false });
+  const [pendingDraft, setPendingDraft] = useState(readPendingDraft);
+
+  const openNew = useCallback(() => setEditor({ open: true, expense: null }), []);
+  const openEdit = useCallback((expense: Expense) => setEditor({ open: true, expense }), []);
+  const closeEditor = useCallback(() => {
+    setEditor({ open: false });
+    setPendingDraft(readPendingDraft());
+  }, []);
+
+  if (status === 'loading') {
+    return (
+      <div className="flex min-h-dvh items-center justify-center" role="status">
+        <p className="text-lg font-medium">Chargement…</p>
+      </div>
+    );
+  }
+
+  if (status === 'error') {
+    return (
+      <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-4 p-6 text-center">
+        <span className="text-5xl" aria-hidden="true">
+          ⚠️
+        </span>
+        <h1 className="text-xl font-bold">Impossible d'ouvrir vos données</h1>
+        <p>{error}</p>
+        <Button onClick={() => window.location.reload()}>Réessayer</Button>
+      </div>
+    );
+  }
+
+  const draftAmount = pendingDraft ? validateAmount(pendingDraft.amount) : null;
+
+  return (
+    <>
+      <a
+        href="#contenu"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded-xl focus:bg-white focus:p-3 dark:focus:bg-slate-900"
+      >
+        Aller au contenu
+      </a>
+      <main id="contenu" className="mx-auto max-w-lg px-4 pb-40 pt-[max(0.5rem,env(safe-area-inset-top))]">
+        {pendingDraft && !editor.open && (
+          <div className="mb-3 flex items-center gap-2 rounded-2xl bg-amber-50 p-3 text-amber-950 ring-1 ring-amber-200 dark:bg-amber-950 dark:text-amber-50 dark:ring-amber-800">
+            <p className="min-w-0 flex-1 text-sm">
+              <strong>Saisie non terminée</strong>
+              {draftAmount?.ok ? ` : ${formatFCFA(draftAmount.value)}` : ''}
+            </p>
+            <Button variant="secondary" className="text-sm" onClick={() => { clearDraft(NEW_EXPENSE_DRAFT); setPendingDraft(null); }}>
+              Effacer
+            </Button>
+            <Button className="text-sm" onClick={openNew}>
+              Reprendre
+            </Button>
+          </div>
+        )}
+
+        {route === 'accueil' && <HomePage onAdd={openNew} onEdit={openEdit} />}
+        {route === 'depenses' && <ExpensesPage onAdd={openNew} onEdit={openEdit} />}
+        {route === 'budgets' && <BudgetsPage />}
+        {route === 'reglages' && <SettingsPage />}
+      </main>
+
+      <button
+        type="button"
+        onClick={openNew}
+        aria-label="Ajouter une dépense"
+        className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-700 text-white shadow-xl shadow-emerald-900/30 hover:bg-emerald-800 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 dark:bg-emerald-400 dark:text-slate-950 dark:hover:bg-emerald-300 sm:right-[calc(50%-15rem)]"
+      >
+        <PlusIcon width={32} height={32} strokeWidth={2.5} />
+      </button>
+
+      <BottomNav current={route} />
+
+      {editor.open && <ExpenseFormModal expense={editor.expense} onClose={closeEditor} />}
+    </>
+  );
+}
