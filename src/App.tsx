@@ -1,4 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { FirstRunSetup } from './components/lock/FirstRunSetup';
+import { LockScreen } from './components/lock/LockScreen';
+import { LockProvider, useLock } from './hooks/useLock';
 import { BottomNav } from './components/BottomNav';
 import { ExpenseFormModal } from './components/ExpenseFormModal';
 import { PlusIcon } from './components/Icons';
@@ -19,11 +22,23 @@ import { clearDraft, isDraftMeaningful, loadDraft, NEW_EXPENSE_DRAFT, type Expen
 export default function App() {
   return (
     <ToastProvider>
-      <AppDataProvider>
-        <AppShell />
-      </AppDataProvider>
+      <LockProvider>
+        <LockGate>
+          <AppDataProvider>
+            <AppShell />
+          </AppDataProvider>
+        </LockGate>
+      </LockProvider>
     </ToastProvider>
   );
+}
+
+/** Les données ne sont chargées et affichées qu'une fois l'application déverrouillée. */
+function LockGate({ children }: { children: ReactNode }) {
+  const { mode } = useLock();
+  if (mode === 'setup') return <FirstRunSetup />;
+  if (mode === 'locked') return <LockScreen />;
+  return <>{children}</>;
 }
 
 type EditorState = { open: false } | { open: true; expense: Expense | null };

@@ -1,4 +1,4 @@
-import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
+import { deleteDB, openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type { Budget, Category, Expense, RecurringExpense } from '../types';
 import { DEFAULT_CATEGORIES } from '../utils/constants';
 
@@ -63,4 +63,17 @@ export function getDB(): Promise<IDBPDatabase<ExpensesDB>> {
     });
   }
   return dbPromise;
+}
+
+/** Supprime définitivement toute la base (utilisé en cas de code oublié). */
+export async function deleteDatabase(): Promise<void> {
+  if (dbPromise) {
+    try {
+      (await dbPromise).close();
+    } catch {
+      // base déjà inaccessible : on la supprime quand même
+    }
+    dbPromise = null;
+  }
+  await deleteDB(DB_NAME);
 }
