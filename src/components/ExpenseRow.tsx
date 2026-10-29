@@ -1,4 +1,5 @@
 import type { Category, Expense } from '../types';
+import { subcategoryName } from '../utils/categories';
 import { paymentMethodLabel } from '../utils/constants';
 import { formatFCFA } from '../utils/money';
 import { CategoryIcon } from './CategoryIcon';
@@ -13,20 +14,29 @@ interface ExpenseRowProps {
 }
 
 export function ExpenseRow({ expense, category, onEdit, onDelete }: ExpenseRowProps) {
+  const type = subcategoryName(category, expense.subcategoryId);
+  const title = expense.note || type || category.name;
+  const meta = [
+    title === category.name ? null : category.name,
+    expense.note && type ? type : null,
+    paymentMethodLabel(expense.paymentMethod),
+  ]
+    .filter((part): part is string => part !== null)
+    .join(' · ');
+
   return (
     <li className="flex items-center gap-1">
       <button
         type="button"
         onClick={() => onEdit(expense)}
         className="flex min-h-14 min-w-0 flex-1 items-center gap-3 rounded-2xl px-2 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800"
-        aria-label={`Modifier : ${category.name}, ${formatFCFA(expense.amount)}${expense.note ? `, ${expense.note}` : ''}`}
+        aria-label={`Modifier : ${[category.name, type, formatFCFA(expense.amount), expense.note].filter(Boolean).join(', ')}`}
       >
         <CategoryIcon category={category} size="sm" />
         <span className="min-w-0 flex-1">
-          <span className="block truncate font-medium">{expense.note || category.name}</span>
+          <span className="block truncate font-medium">{title}</span>
           <span className={`flex items-center gap-1 truncate text-sm ${mutedText}`}>
-            {expense.note ? `${category.name} · ` : ''}
-            {paymentMethodLabel(expense.paymentMethod)}
+            {meta}
             {expense.recurringId && <RepeatIcon width={14} height={14} aria-label="récurrente" />}
           </span>
         </span>

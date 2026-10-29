@@ -6,6 +6,7 @@ import type {
   Expense,
   RecurringExpense,
   Result,
+  Subcategory,
 } from '../types';
 import { isPaymentMethod } from './constants';
 import { currentMonthKey, isValidISODate, isValidMonthKey } from './dates';
@@ -49,8 +50,20 @@ function parseExpense(raw: unknown): Expense | string {
     note: optionalString(raw.note),
     createdAt: isNonEmptyString(raw.createdAt) ? raw.createdAt : `${raw.date}T12:00:00.000Z`,
   };
+  if (isNonEmptyString(raw.subcategoryId)) expense.subcategoryId = raw.subcategoryId;
   if (isNonEmptyString(raw.recurringId)) expense.recurringId = raw.recurringId;
   return expense;
+}
+
+function parseSubcategories(value: unknown): Subcategory[] | string {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) return 'liste des types incorrecte';
+  const result: Subcategory[] = [];
+  for (const raw of value) {
+    if (!isRecord(raw) || !isNonEmptyString(raw.id) || !isNonEmptyString(raw.name)) return 'type incorrect';
+    result.push({ id: raw.id, name: raw.name.trim() });
+  }
+  return result;
 }
 
 function parseCategory(raw: unknown, index: number): Category | string {
@@ -58,12 +71,15 @@ function parseCategory(raw: unknown, index: number): Category | string {
   if (!isNonEmptyString(raw.id)) return 'identifiant manquant';
   if (!isNonEmptyString(raw.name)) return 'nom manquant';
   if (typeof raw.color !== 'string' || !/^#[0-9a-f]{6}$/i.test(raw.color)) return 'couleur incorrecte';
+  const subcategories = parseSubcategories(raw.subcategories);
+  if (typeof subcategories === 'string') return subcategories;
   return {
     id: raw.id,
     name: raw.name.trim(),
     color: raw.color,
     icon: isNonEmptyString(raw.icon) ? raw.icon : '📦',
     order: typeof raw.order === 'number' && Number.isFinite(raw.order) ? raw.order : index,
+    subcategories,
   };
 }
 
@@ -83,7 +99,7 @@ function parseRecurring(raw: unknown): RecurringExpense | string {
   const day = raw.dayOfMonth;
   if (typeof day !== 'number' || !Number.isInteger(day) || day < 1 || day > 31) return 'jour du mois incorrect';
   if (typeof raw.active !== 'boolean') return 'statut actif/inactif manquant';
-  return {
+  const rule: RecurringExpense = {
     id: raw.id,
     amount: raw.amount,
     categoryId: raw.categoryId,
@@ -95,6 +111,8 @@ function parseRecurring(raw: unknown): RecurringExpense | string {
     lastRunMonth:
       typeof raw.lastRunMonth === 'string' && isValidMonthKey(raw.lastRunMonth) ? raw.lastRunMonth : currentMonthKey(),
   };
+  if (isNonEmptyString(raw.subcategoryId)) rule.subcategoryId = raw.subcategoryId;
+  return rule;
 }
 
 function parseList<T>(

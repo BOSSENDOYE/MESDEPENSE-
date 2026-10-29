@@ -33,6 +33,8 @@ function remove(key: string): void {
 export interface ExpenseDraft {
   amount: string;
   categoryId: string;
+  /** Type écrit librement par l'utilisateur ('' = aucun). */
+  typeName: string;
   date: ISODate;
   paymentMethod: PaymentMethod;
   note: string;
@@ -44,24 +46,34 @@ export function editDraftKey(expenseId: string): string {
   return `brouillon:edition:${expenseId}`;
 }
 
-function isDraft(value: unknown): value is ExpenseDraft {
-  if (typeof value !== 'object' || value === null) return false;
+function toDraft(value: unknown): ExpenseDraft | null {
+  if (typeof value !== 'object' || value === null) return null;
   const v = value as Record<string, unknown>;
-  return (
-    typeof v.amount === 'string' &&
-    typeof v.categoryId === 'string' &&
-    typeof v.date === 'string' &&
-    typeof v.note === 'string' &&
-    isPaymentMethod(v.paymentMethod)
-  );
+  if (
+    typeof v.amount !== 'string' ||
+    typeof v.categoryId !== 'string' ||
+    typeof v.date !== 'string' ||
+    typeof v.note !== 'string' ||
+    !isPaymentMethod(v.paymentMethod)
+  ) {
+    return null;
+  }
+  return {
+    amount: v.amount,
+    categoryId: v.categoryId,
+    // Absent des brouillons enregistrés avant l'ajout des types.
+    typeName: typeof v.typeName === 'string' ? v.typeName : '',
+    date: v.date,
+    paymentMethod: v.paymentMethod,
+    note: v.note,
+  };
 }
 
 export function loadDraft(key: string): ExpenseDraft | null {
   const raw = read(key);
   if (raw === null) return null;
   try {
-    const parsed: unknown = JSON.parse(raw);
-    return isDraft(parsed) ? parsed : null;
+    return toDraft(JSON.parse(raw));
   } catch {
     return null;
   }
@@ -76,7 +88,7 @@ export function clearDraft(key: string): void {
 }
 
 export function isDraftMeaningful(draft: ExpenseDraft): boolean {
-  return draft.amount.trim() !== '' || draft.note.trim() !== '';
+  return draft.amount.trim() !== '' || draft.note.trim() !== '' || draft.typeName.trim() !== '';
 }
 
 export function getLastPaymentMethod(): PaymentMethod {

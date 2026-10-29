@@ -44,6 +44,7 @@ export async function applyDueRecurring(today: ISODate = todayISO()): Promise<nu
         createdAt: new Date().toISOString(),
         recurringId: rule.id,
       };
+      if (rule.subcategoryId) expense.subcategoryId = rule.subcategoryId;
       writes.push(tx.objectStore('expenses').add(expense));
       created++;
     }

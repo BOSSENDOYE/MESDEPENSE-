@@ -4,7 +4,16 @@ import { createBackup, parseBackup } from './backup';
 import { expensesToCsv } from './csv';
 
 const snapshot: AppDataSnapshot = {
-  categories: [{ id: 'alimentation', name: 'Alimentation', color: '#16a34a', icon: '🍚', order: 0 }],
+  categories: [
+    {
+      id: 'alimentation',
+      name: 'Alimentation',
+      color: '#16a34a',
+      icon: '🍚',
+      order: 0,
+      subcategories: [{ id: 'pain', name: 'Boulangerie' }],
+    },
+  ],
   expenses: [
     {
       id: 'a',
@@ -13,6 +22,7 @@ const snapshot: AppDataSnapshot = {
       date: '2026-10-01',
       paymentMethod: 'wave',
       note: 'Pain; "frais"',
+      subcategoryId: 'pain',
       createdAt: '2026-10-01T08:00:00.000Z',
     },
   ],
@@ -48,8 +58,8 @@ describe('export CSV', () => {
   it('utilise le point-virgule et échappe les guillemets', () => {
     const csv = expensesToCsv(snapshot.expenses, snapshot.categories);
     expect(csv.split('\r\n')).toEqual([
-      'Date;Montant (FCFA);Catégorie;Moyen de paiement;Note',
-      '2026-10-01;2500;Alimentation;Wave;"Pain; ""frais"""',
+      'Date;Montant (FCFA);Catégorie;Type;Moyen de paiement;Note',
+      '2026-10-01;2500;Alimentation;Boulangerie;Wave;"Pain; ""frais"""',
     ]);
   });
 

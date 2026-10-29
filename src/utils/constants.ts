@@ -19,17 +19,18 @@ export function paymentMethodLabel(id: PaymentMethod): string {
 /** Identifiant de la catégorie de repli lors d'une suppression. */
 export const FALLBACK_CATEGORY_ID = 'autres';
 
+// Aucun type prédéfini : l'utilisateur écrit lui-même ses types lors de la saisie.
 export const DEFAULT_CATEGORIES: readonly Category[] = [
-  { id: 'alimentation', name: 'Alimentation', icon: '🍚', color: '#16a34a', order: 0 },
-  { id: 'transport', name: 'Transport', icon: '🚌', color: '#2563eb', order: 1 },
-  { id: 'logement', name: 'Logement', icon: '🏠', color: '#9333ea', order: 2 },
-  { id: 'factures', name: 'Factures', icon: '💡', color: '#ea580c', order: 3 },
-  { id: 'credit', name: 'Crédit téléphone/data', icon: '📱', color: '#0891b2', order: 4 },
-  { id: 'sante', name: 'Santé', icon: '💊', color: '#dc2626', order: 5 },
-  { id: 'education', name: 'Éducation', icon: '🎓', color: '#ca8a04', order: 6 },
-  { id: 'loisirs', name: 'Loisirs', icon: '🎉', color: '#db2777', order: 7 },
-  { id: 'famille', name: 'Famille', icon: '👨‍👩‍👧', color: '#92400e', order: 8 },
-  { id: 'autres', name: 'Autres', icon: '📦', color: '#64748b', order: 9 },
+  { id: 'alimentation', name: 'Alimentation', icon: '🍚', color: '#16a34a', order: 0, subcategories: [] },
+  { id: 'transport', name: 'Transport', icon: '🚌', color: '#2563eb', order: 1, subcategories: [] },
+  { id: 'logement', name: 'Logement', icon: '🏠', color: '#9333ea', order: 2, subcategories: [] },
+  { id: 'factures', name: 'Factures', icon: '💡', color: '#ea580c', order: 3, subcategories: [] },
+  { id: 'credit', name: 'Crédit téléphone/data', icon: '📱', color: '#0891b2', order: 4, subcategories: [] },
+  { id: 'sante', name: 'Santé', icon: '💊', color: '#dc2626', order: 5, subcategories: [] },
+  { id: 'education', name: 'Éducation', icon: '🎓', color: '#ca8a04', order: 6, subcategories: [] },
+  { id: 'loisirs', name: 'Loisirs', icon: '🎉', color: '#db2777', order: 7, subcategories: [] },
+  { id: 'famille', name: 'Famille', icon: '👨‍👩‍👧', color: '#92400e', order: 8, subcategories: [] },
+  { id: 'autres', name: 'Autres', icon: '📦', color: '#64748b', order: 9, subcategories: [] },
 ];
 
 export const COLOR_CHOICES: readonly string[] = [
@@ -49,4 +50,5 @@ export const UNKNOWN_CATEGORY: Category = {
   icon: '❔',
   color: '#94a3b8',
   order: Number.MAX_SAFE_INTEGER,
+  subcategories: [],
 };

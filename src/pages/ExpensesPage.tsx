@@ -8,6 +8,7 @@ import { deleteExpense } from '../db/expenses';
 import { useAppData } from '../hooks/useAppData';
 import { useToast } from '../hooks/useToast';
 import type { Expense, MonthKey } from '../types';
+import { subcategoryName } from '../utils/categories';
 import { currentMonthKey, formatDayHeading, formatMonthLabel } from '../utils/dates';
 import { formatFCFA } from '../utils/money';
 import { availableMonths, filterExpenses, groupByDay, sumAmounts } from '../utils/stats';
@@ -20,24 +21,36 @@ export function ExpensesPage({ onAdd, onEdit }: { onAdd: () => void; onEdit: (ex
   const { showToast } = useToast();
   const [month, setMonth] = useState<MonthKey | typeof ALL>(currentMonthKey);
   const [categoryId, setCategoryId] = useState<string>(ALL);
+  const [subcategoryId, setSubcategoryId] = useState<string>(ALL);
   const [query, setQuery] = useState('');
+  const selectedCategory = categories.find((c) => c.id === categoryId) ?? null;
   const [toDelete, setToDelete] = useState<Expense | null>(null);
 
   const months = useMemo(() => availableMonths(expenses, currentMonthKey()), [expenses]);
   const filtered = useMemo(
     () =>
-      filterExpenses(expenses, {
-        month: month === ALL ? null : month,
-        categoryId: categoryId === ALL ? null : categoryId,
-        query,
-      }),
-    [expenses, month, categoryId, query],
+      filterExpenses(
+        expenses,
+        {
+          month: month === ALL ? null : month,
+          categoryId: categoryId === ALL ? null : categoryId,
+          subcategoryId: subcategoryId === ALL ? null : subcategoryId,
+          query,
+        },
+        // La recherche trouve aussi le type (ex. « taxi ») et la catégorie.
+        (e) => {
+          const category = getCategory(e.categoryId);
+          return `${category.name} ${subcategoryName(category, e.subcategoryId) ?? ''}`;
+        },
+      ),
+    [expenses, month, categoryId, subcategoryId, query, getCategory],
   );
   const groups = useMemo(() => groupByDay(filtered), [filtered]);
   const hasFilters = categoryId !== ALL || query.trim() !== '';
 
   function resetFilters() {
     setCategoryId(ALL);
+    setSubcategoryId(ALL);
     setQuery('');
     setMonth(ALL);
   }
@@ -57,13 +70,13 @@ export function ExpensesPage({ onAdd, onEdit }: { onAdd: () => void; onEdit: (ex
       <div className="space-y-2">
         <div className="relative">
           <label htmlFor="recherche" className="sr-only">
-            Rechercher dans les notes
+            Rechercher dans les notes et les types
           </label>
           <SearchIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" width={20} height={20} />
           <input
             id="recherche"
             type="search"
-            placeholder="Rechercher dans les notes…"
+            placeholder="Rechercher (note, type : taxi, loyer…)"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className={`${inputClass} pl-10`}
@@ -87,7 +100,15 @@ export function ExpensesPage({ onAdd, onEdit }: { onAdd: () => void; onEdit: (ex
             <label htmlFor="filtre-categorie" className="sr-only">
               Catégorie
             </label>
-            <select id="filtre-categorie" value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className={inputClass}>
+            <select
+              id="filtre-categorie"
+              value={categoryId}
+              onChange={(e) => {
+                setCategoryId(e.target.value);
+                setSubcategoryId(ALL);
+              }}
+              className={inputClass}
+            >
               <option value={ALL}>Toutes catégories</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -97,6 +118,21 @@ export function ExpensesPage({ onAdd, onEdit }: { onAdd: () => void; onEdit: (ex
             </select>
           </div>
         </div>
+        {selectedCategory && selectedCategory.subcategories.length > 0 && (
+          <div>
+            <label htmlFor="filtre-type" className="sr-only">
+              Type de {selectedCategory.name}
+            </label>
+            <select id="filtre-type" value={subcategoryId} onChange={(e) => setSubcategoryId(e.target.value)} className={inputClass}>
+              <option value={ALL}>Tous les types de {selectedCategory.name}</option>
+              {selectedCategory.subcategories.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {expenses.length === 0 ? (

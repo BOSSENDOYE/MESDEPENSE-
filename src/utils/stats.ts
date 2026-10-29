@@ -136,18 +136,54 @@ export interface ExpenseFilter {
   month: MonthKey | null;
   /** null = toutes les catégories */
   categoryId: string | null;
+  /** null ou absent = tous les types */
+  subcategoryId?: string | null;
   /** Recherche dans la note (insensible à la casse et aux accents). */
   query: string;
 }
 
-export function filterExpenses(expenses: readonly Expense[], filter: ExpenseFilter): Expense[] {
+/**
+ * Filtre les dépenses. `describe` fournit un texte supplémentaire pour la recherche
+ * (ex. le nom du type), en plus de la note.
+ */
+export function filterExpenses(
+  expenses: readonly Expense[],
+  filter: ExpenseFilter,
+  describe?: (expense: Expense) => string,
+): Expense[] {
   const query = normalizeText(filter.query);
+  const subcategoryId = filter.subcategoryId ?? null;
   return expenses.filter(
     (e) =>
       (filter.month === null || monthKeyOf(e.date) === filter.month) &&
       (filter.categoryId === null || e.categoryId === filter.categoryId) &&
-      (query === '' || normalizeText(e.note).includes(query)),
+      (subcategoryId === null || e.subcategoryId === subcategoryId) &&
+      (query === '' || normalizeText(`${e.note} ${describe?.(e) ?? ''}`).includes(query)),
   );
+}
+
+export interface SubcategoryShare {
+  categoryId: string;
+  /** null = dépenses sans type précisé */
+  subcategoryId: string | null;
+  total: number;
+  share: number;
+}
+
+/** Totaux par couple (catégorie, type), triés par montant décroissant. */
+export function subcategoryBreakdown(expenses: readonly Expense[]): SubcategoryShare[] {
+  const grandTotal = sumAmounts(expenses);
+  const totals = new Map<string, SubcategoryShare>();
+  for (const e of expenses) {
+    const subcategoryId = e.subcategoryId ?? null;
+    const key = `${e.categoryId}\u0000${subcategoryId ?? ''}`;
+    const entry = totals.get(key);
+    if (entry) entry.total += e.amount;
+    else totals.set(key, { categoryId: e.categoryId, subcategoryId, total: e.amount, share: 0 });
+  }
+  return [...totals.values()]
+    .map((s) => ({ ...s, share: grandTotal > 0 ? s.total / grandTotal : 0 }))
+    .sort((a, b) => b.total - a.total);
 }
 
 export interface PaymentShare {

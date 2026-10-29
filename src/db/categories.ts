@@ -1,5 +1,26 @@
 import type { Category } from '../types';
+import { resolveTypeName } from '../utils/categories';
+import { createId } from '../utils/id';
 import { getDB } from './database';
+
+/**
+ * Transforme le type écrit par l'utilisateur en identifiant, en l'ajoutant à la catégorie
+ * s'il est nouveau. Lecture + écriture dans une même transaction (pas de doublon).
+ */
+export async function ensureType(categoryId: string, typeName: string): Promise<string | undefined> {
+  if (typeName.trim() === '') return undefined;
+  const db = await getDB();
+  const tx = db.transaction('categories', 'readwrite');
+  const stored = await tx.store.get(categoryId);
+  if (!stored) {
+    await tx.done;
+    return undefined;
+  }
+  const result = resolveTypeName({ ...stored, subcategories: stored.subcategories ?? [] }, typeName, createId);
+  if (result.created) await tx.store.put(result.category);
+  await tx.done;
+  return result.subcategoryId;
+}
 
 export async function saveCategory(category: Category): Promise<void> {
   const db = await getDB();

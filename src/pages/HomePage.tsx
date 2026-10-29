@@ -34,9 +34,11 @@ import {
   monthPace,
   paymentBreakdown,
   percentChange,
+  subcategoryBreakdown,
   sumAmounts,
   totalUpToDay,
 } from '../utils/stats';
+import { subcategoryName } from '../utils/categories';
 import { pluralize } from '../utils/text';
 
 interface HomePageProps {
@@ -73,6 +75,7 @@ export function HomePage({ onAdd, onEdit }: HomePageProps) {
       pace: monthPace(total, month, today),
       breakdown: categoryBreakdown(monthExpenses),
       payments: paymentBreakdown(monthExpenses),
+      types: subcategoryBreakdown(monthExpenses),
       daily: dailyTotals(monthExpenses, month),
       biggest: largestExpense(monthExpenses),
       recurringCount: monthExpenses.filter((e) => e.recurringId).length,
@@ -248,6 +251,26 @@ export function HomePage({ onAdd, onEdit }: HomePageProps) {
             <h2 className="mb-2 text-lg font-semibold">Dépenses par jour</h2>
             <DailyBarChart data={stats.daily} month={month} average={stats.pace.dailyAverage} today={today} />
           </Card>
+
+          {stats.types.some((t) => t.subcategoryId !== null) && (
+            <Card>
+              <h2 className="text-lg font-semibold">Détail par type</h2>
+              <p className={`mb-3 text-sm ${mutedText}`}>Où part l'argent, précisément (les 6 premiers).</p>
+              <ShareBars
+                label="Dépenses par type"
+                items={stats.types.slice(0, 6).map((t) => {
+                  const category = getCategory(t.categoryId);
+                  const type = subcategoryName(category, t.subcategoryId ?? undefined);
+                  return {
+                    id: `${t.categoryId}/${t.subcategoryId ?? ''}`,
+                    label: `${category.icon} ${category.name} · ${type ?? 'sans type'}`,
+                    total: t.total,
+                    share: t.share,
+                  };
+                })}
+              />
+            </Card>
+          )}
 
           <Card>
             <h2 className="mb-3 text-lg font-semibold">Moyens de paiement</h2>

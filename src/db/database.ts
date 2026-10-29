@@ -23,7 +23,8 @@ export interface ExpensesDB extends DBSchema {
 }
 
 const DB_NAME = 'mes-depenses';
-const DB_VERSION = 1;
+// v1 : création des stores · v2 : types (sous-catégories) dans chaque catégorie
+const DB_VERSION = 2;
 
 let dbPromise: Promise<IDBPDatabase<ExpensesDB>> | null = null;
 
@@ -40,7 +41,15 @@ export function getDB(): Promise<IDBPDatabase<ExpensesDB>> {
           db.createObjectStore('recurring', { keyPath: 'id' });
 
           const categories = tx.objectStore('categories');
-          for (const category of DEFAULT_CATEGORIES) void categories.put({ ...category });
+          for (const category of DEFAULT_CATEGORIES) void categories.put(structuredClone(category));
+        } else if (oldVersion < 2) {
+          // Ajoute une liste de types vide aux catégories existantes (sans toucher aux dépenses).
+          const categories = tx.objectStore('categories');
+          void categories.getAll().then((all) => {
+            for (const category of all) {
+              if (!Array.isArray(category.subcategories)) void categories.put({ ...category, subcategories: [] });
+            }
+          });
         }
       },
       blocking() {

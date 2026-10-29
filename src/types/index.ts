@@ -16,11 +16,19 @@ export interface Expense {
   note: string;
   /** Horodatage ISO complet de création. */
   createdAt: string;
+  /** Type précis dans la catégorie (ex. Transport → Taxi). Facultatif. */
+  subcategoryId?: string;
   /** Présent si la dépense a été générée par une dépense récurrente. */
   recurringId?: string;
 }
 
 export type ExpenseInput = Omit<Expense, 'id' | 'createdAt'>;
+
+/** Type de dépense à l'intérieur d'une catégorie (ex. Taxi, Clando pour Transport). */
+export interface Subcategory {
+  id: string;
+  name: string;
+}
 
 export interface Category {
   id: string;
@@ -31,6 +39,8 @@ export interface Category {
   icon: string;
   /** Ordre d'affichage. */
   order: number;
+  /** Types proposés pour cette catégorie, ajoutés librement par l'utilisateur. */
+  subcategories: Subcategory[];
 }
 
 export interface Budget {
@@ -43,6 +53,7 @@ export interface RecurringExpense {
   id: string;
   amount: number;
   categoryId: string;
+  subcategoryId?: string;
   paymentMethod: PaymentMethod;
   note: string;
   /** Jour du mois (1–31). Si le mois est plus court, le dernier jour est utilisé. */

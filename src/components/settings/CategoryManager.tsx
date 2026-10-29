@@ -2,16 +2,16 @@ import { useState, type FormEvent } from 'react';
 import { deleteCategory, saveCategory } from '../../db/categories';
 import { useAppData } from '../../hooks/useAppData';
 import { useToast } from '../../hooks/useToast';
-import type { Category } from '../../types';
+import type { Category, Subcategory } from '../../types';
 import { fallbackCategoryFor, nextCategoryOrder, validateCategoryName } from '../../utils/categories';
 import { COLOR_CHOICES, ICON_CHOICES } from '../../utils/constants';
 import { createId } from '../../utils/id';
-import { pluralize } from '../../utils/text';
+import { normalizeText, pluralize } from '../../utils/text';
 import { CategoryIcon } from '../CategoryIcon';
 import { ConfirmDialog } from '../ConfirmDialog';
-import { PlusIcon } from '../Icons';
+import { PlusIcon, TrashIcon } from '../Icons';
 import { Modal } from '../Modal';
-import { Button, Card, FieldError, inputClass, labelClass, mutedText } from '../ui';
+import { Button, Card, FieldError, IconButton, inputClass, labelClass, mutedText } from '../ui';
 
 type Editing = { mode: 'new' } | { mode: 'edit'; category: Category };
 
@@ -62,21 +62,45 @@ function CategoryEditor({ category, onClose }: { category: Category | null; onCl
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>(() => category?.subcategories.map((s) => ({ ...s })) ?? []);
+  const [newSubName, setNewSubName] = useState('');
 
   const nameError = validateCategoryName(name, categories, category?.id ?? null);
+  // Types renseignés (les lignes vidées sont retirées à l'enregistrement).
+  const keptSubcategories = subcategories
+    .map((s) => ({ ...s, name: s.name.trim() }))
+    .filter((s) => s.name !== '');
+  const duplicateSub = keptSubcategories.find(
+    (s, i) => keptSubcategories.findIndex((o) => normalizeText(o.name) === normalizeText(s.name)) !== i,
+  );
+  const subError = duplicateSub ? `Le type « ${duplicateSub.name} » apparaît deux fois.` : null;
+
+  function addSubcategoryRow() {
+    const trimmed = newSubName.trim();
+    if (trimmed === '') return;
+    setSubcategories((list) => [...list, { id: createId(), name: trimmed }]);
+    setNewSubName('');
+  }
   const fallback = category ? fallbackCategoryFor(categories, category.id) : null;
   const usage = category ? expenses.filter((e) => e.categoryId === category.id).length : 0;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSubmitted(true);
-    if (nameError || icon.trim() === '') return;
+    if (nameError || subError || icon.trim() === '') return;
+    // Un type tapé mais pas encore ajouté est pris en compte.
+    const pending = newSubName.trim();
+    const finalSubs =
+      pending !== '' && !keptSubcategories.some((s) => normalizeText(s.name) === normalizeText(pending))
+        ? [...keptSubcategories, { id: createId(), name: pending }]
+        : keptSubcategories;
     const next: Category = {
       id: category?.id ?? createId(),
       name: name.trim(),
       icon: icon.trim(),
       color,
       order: category?.order ?? nextCategoryOrder(categories),
+      subcategories: finalSubs,
     };
     try {
       await saveCategory(next);
@@ -101,7 +125,7 @@ function CategoryEditor({ category, onClose }: { category: Category | null; onCl
     onClose();
   }
 
-  const preview: Category = { id: 'apercu', name, icon: icon || '❔', color, order: 0 };
+  const preview: Category = { id: 'apercu', name, icon: icon || '❔', color, order: 0, subcategories: [] };
 
   return (
     <>
@@ -140,6 +164,70 @@ function CategoryEditor({ category, onClose }: { category: Category | null; onCl
             </div>
           </div>
           {submitted && nameError && <FieldError>{nameError}</FieldError>}
+
+          <fieldset>
+            <legend className={labelClass}>Types de dépense écrits</legend>
+            <p className={`text-sm ${mutedText}`}>
+              Les types que vous écrivez lors de la saisie (ex. Taxi pour Transport) apparaissent ici. Vous pouvez les
+              corriger ou les supprimer.
+            </p>
+            {subcategories.length > 0 && (
+              <ul className="mt-2 space-y-2">
+                {subcategories.map((s, index) => (
+                  <li key={s.id} className="flex items-center gap-2">
+                    <label htmlFor={`type-${s.id}`} className="sr-only">
+                      Nom du type {index + 1}
+                    </label>
+                    <input
+                      id={`type-${s.id}`}
+                      type="text"
+                      maxLength={40}
+                      value={s.name}
+                      onChange={(e) =>
+                        setSubcategories((list) => list.map((o) => (o.id === s.id ? { ...o, name: e.target.value } : o)))
+                      }
+                      className={`${inputClass} flex-1`}
+                    />
+                    <IconButton
+                      label={`Supprimer le type ${s.name}`}
+                      onClick={() => setSubcategories((list) => list.filter((o) => o.id !== s.id))}
+                    >
+                      <TrashIcon width={20} height={20} />
+                    </IconButton>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="mt-2 flex gap-2">
+              <label htmlFor="nouveau-type" className="sr-only">
+                Nouveau type
+              </label>
+              <input
+                id="nouveau-type"
+                type="text"
+                maxLength={40}
+                placeholder="Nouveau type…"
+                value={newSubName}
+                onChange={(e) => setNewSubName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addSubcategoryRow();
+                  }
+                }}
+                className={`${inputClass} flex-1`}
+              />
+              <Button variant="secondary" onClick={addSubcategoryRow} disabled={newSubName.trim() === ''}>
+                Ajouter
+              </Button>
+            </div>
+            {subError && <FieldError>{subError}</FieldError>}
+            {category && (
+              <p className={`mt-1 text-xs ${mutedText}`}>
+                Supprimer un type ne supprime pas les dépenses : elles restent dans la catégorie, sans type.
+              </p>
+            )}
+          </fieldset>
 
           <fieldset>
             <legend className={labelClass}>Icône</legend>

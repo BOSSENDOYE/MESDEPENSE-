@@ -11,7 +11,12 @@ export async function readAllData(): Promise<AppDataSnapshot> {
     tx.objectStore('recurring').getAll(),
     tx.done,
   ]);
-  return { expenses, categories, budgets, recurring };
+  return {
+    expenses,
+    categories: categories.map((c) => (Array.isArray(c.subcategories) ? c : { ...c, subcategories: [] })),
+    budgets,
+    recurring,
+  };
 }
 
 /** Remplace toutes les données (restauration d'une sauvegarde), de façon atomique. */

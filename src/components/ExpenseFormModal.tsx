@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { ensureType } from '../db/categories';
 import { addExpense, deleteExpense, updateExpense } from '../db/expenses';
 import { useAppData } from '../hooks/useAppData';
 import { useToast } from '../hooks/useToast';
-import type { Expense, ExpenseInput } from '../types';
+import type { Category, Expense, ExpenseInput } from '../types';
+import { subcategoryName } from '../utils/categories';
 import { isValidISODate, todayISO, yesterdayISO } from '../utils/dates';
 import { formatFCFA, validateAmount } from '../utils/money';
 import {
@@ -21,16 +23,32 @@ import { CategoryPicker } from './CategoryPicker';
 import { ConfirmDialog } from './ConfirmDialog';
 import { Modal } from './Modal';
 import { PaymentMethodPicker } from './PaymentMethodPicker';
+import { TypeInput } from './TypeInput';
 import { Button, FieldError, inputClass, labelClass } from './ui';
 
 const FORM_ID = 'formulaire-depense';
 
 function emptyDraft(): ExpenseDraft {
-  return { amount: '', categoryId: '', date: todayISO(), paymentMethod: getLastPaymentMethod(), note: '' };
+  return {
+    amount: '',
+    categoryId: '',
+    typeName: '',
+    date: todayISO(),
+    paymentMethod: getLastPaymentMethod(),
+    note: '',
+  };
 }
 
-function draftFromExpense(e: Expense): ExpenseDraft {
-  return { amount: String(e.amount), categoryId: e.categoryId, date: e.date, paymentMethod: e.paymentMethod, note: e.note };
+function draftFromExpense(e: Expense, categories: readonly Category[]): ExpenseDraft {
+  const category = categories.find((c) => c.id === e.categoryId);
+  return {
+    amount: String(e.amount),
+    categoryId: e.categoryId,
+    typeName: (category && subcategoryName(category, e.subcategoryId)) ?? '',
+    date: e.date,
+    paymentMethod: e.paymentMethod,
+    note: e.note,
+  };
 }
 
 interface ExpenseFormModalProps {
@@ -47,7 +65,7 @@ export function ExpenseFormModal({ expense, onClose }: ExpenseFormModalProps) {
   const [initial] = useState(() => {
     const saved = loadDraft(draftKey);
     if (saved && isDraftMeaningful(saved)) return { draft: saved, restored: true };
-    return { draft: expense ? draftFromExpense(expense) : emptyDraft(), restored: false };
+    return { draft: expense ? draftFromExpense(expense, categories) : emptyDraft(), restored: false };
   });
   const [draft, setDraft] = useState<ExpenseDraft>(initial.draft);
   const [restored, setRestored] = useState(initial.restored);
@@ -71,6 +89,7 @@ export function ExpenseFormModal({ expense, onClose }: ExpenseFormModalProps) {
     setDraft((d) => ({ ...d, [field]: value }));
   }
 
+  const selectedCategory = categories.find((c) => c.id === draft.categoryId) ?? null;
   const amountCheck = validateAmount(draft.amount);
   const categoryError =
     draft.categoryId === ''
@@ -89,16 +108,20 @@ export function ExpenseFormModal({ expense, onClose }: ExpenseFormModalProps) {
     }
     if (categoryError || dateError) return;
 
-    const input: ExpenseInput = {
-      amount: amountCheck.value,
-      categoryId: draft.categoryId,
-      date: draft.date,
-      paymentMethod: draft.paymentMethod,
-      note: draft.note.trim(),
-    };
     setSaving(true);
     setSaveError(null);
     try {
+      // Le type écrit est réutilisé s'il existe déjà, sinon ajouté à la catégorie.
+      const subcategoryId = await ensureType(draft.categoryId, draft.typeName);
+      const input: ExpenseInput = {
+        amount: amountCheck.value,
+        categoryId: draft.categoryId,
+        // Toujours présent (même undefined) pour effacer l'ancien type lors d'une modification.
+        subcategoryId,
+        date: draft.date,
+        paymentMethod: draft.paymentMethod,
+        note: draft.note.trim(),
+      };
       if (expense) await updateExpense({ ...expense, ...input });
       else await addExpense(input);
       clearDraft(draftKey);
@@ -121,7 +144,7 @@ export function ExpenseFormModal({ expense, onClose }: ExpenseFormModalProps) {
 
   function handleReset() {
     clearDraft(draftKey);
-    setDraft(expense ? draftFromExpense(expense) : emptyDraft());
+    setDraft(expense ? draftFromExpense(expense, categories) : emptyDraft());
     setRestored(false);
     setSubmitted(false);
     amountRef.current?.focus();
@@ -179,9 +202,20 @@ export function ExpenseFormModal({ expense, onClose }: ExpenseFormModalProps) {
           <CategoryPicker
             categories={categories}
             value={draft.categoryId}
-            onChange={(id) => update('categoryId', id)}
+            onChange={(id) =>
+              setDraft((d) => (d.categoryId === id ? d : { ...d, categoryId: id, typeName: '' }))
+            }
             error={submitted ? categoryError : null}
           />
+
+          {selectedCategory && (
+            <TypeInput
+              id="type-depense"
+              category={selectedCategory}
+              value={draft.typeName}
+              onChange={(text) => update('typeName', text)}
+            />
+          )}
 
           <div>
             <label htmlFor="date" className={labelClass}>
