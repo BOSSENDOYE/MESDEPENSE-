@@ -1,15 +1,14 @@
 import { useState } from 'react';
 import { isPinSupported, PIN_MAX_LENGTH, PIN_MIN_LENGTH, validateNewPin } from '../../utils/pin';
-import { PinMessage, PinPad, type PinTone } from './PinPad';
+import { PinMessage, PinPad } from './PinPad';
 
 interface PinSetupProps {
   /** Enregistre le code confirmé. */
   onDone: (pin: string) => Promise<void>;
-  tone?: PinTone;
 }
 
 /** Création d'un code en deux étapes : saisie puis confirmation. */
-export function PinSetup({ onDone, tone = 'neutral' }: PinSetupProps) {
+export function PinSetup({ onDone }: PinSetupProps) {
   const [step, setStep] = useState<'enter' | 'confirm'>('enter');
   const [first, setFirst] = useState('');
   const [value, setValue] = useState('');
@@ -20,7 +19,7 @@ export function PinSetup({ onDone, tone = 'neutral' }: PinSetupProps) {
   if (!isPinSupported()) {
     return (
       <div className="flex flex-1 items-center">
-        <PinMessage tone={tone} kind="error">
+        <PinMessage kind="error">
           Le code nécessite une connexion sécurisée (adresse en https://). Ouvrez l'application depuis son adresse Netlify.
         </PinMessage>
       </div>
@@ -84,7 +83,7 @@ export function PinSetup({ onDone, tone = 'neutral' }: PinSetupProps) {
 
   const hint =
     step === 'enter' && value.length >= PIN_MIN_LENGTH ? (
-      <PinMessage tone={tone} kind="info">
+      <PinMessage kind="info">
         Appuyez sur OK pour continuer
       </PinMessage>
     ) : null;
@@ -102,17 +101,16 @@ export function PinSetup({ onDone, tone = 'neutral' }: PinSetupProps) {
       onSubmit={step === 'enter' ? continueToConfirm : undefined}
       disabled={busy}
       label={step === 'enter' ? 'Choisissez votre code' : 'Confirmez votre code'}
-      tone={tone}
       errorKey={errorKey}
       error={error !== null && value.length === 0}
       heading={heading}
       message={
         error ? (
-          <PinMessage tone={tone} kind="error">
+          <PinMessage kind="error">
             {error}
           </PinMessage>
         ) : busy ? (
-          <PinMessage tone={tone} kind="info">
+          <PinMessage kind="info">
             Enregistrement…
           </PinMessage>
         ) : (

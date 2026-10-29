@@ -9,18 +9,18 @@ export function FirstRunSetup() {
     <LockLayout
       eyebrow="Bienvenue 👋"
       title="Protégez vos dépenses"
-      subtitle="Ce code sera demandé à chaque ouverture de l'application."
+      caption="Ce code sera demandé à chaque ouverture."
       footer={
         <button
           type="button"
           onClick={skipSetup}
-          className="min-h-11 rounded-full px-4 text-sm font-semibold text-emerald-50 hover:bg-white/10"
+          className="min-h-11 rounded-full px-4 text-sm font-semibold text-emerald-800 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-slate-800"
         >
           Plus tard
         </button>
       }
     >
-      <PinSetup onDone={savePin} tone="brand" />
+      <PinSetup onDone={savePin} />
     </LockLayout>
   );
 }

@@ -1,42 +1,47 @@
 import type { ReactNode } from 'react';
 
 interface LockLayoutProps {
-  /** Petit texte au-dessus du titre (ex. « Bonsoir 👋 »). */
+  /** Petit texte au-dessus du titre (ex. « Bonsoir »). */
   eyebrow?: string;
   title: string;
-  subtitle?: string;
+  /** Petite ligne sous le titre (ex. la date). */
+  caption?: string;
+  /** Initiale affichée dans l'avatar ; sans valeur, le logo de l'application est affiché. */
+  avatar?: string;
   /** Pavé de saisie : occupe l'espace restant, clavier en bas. */
   children: ReactNode;
   footer?: ReactNode;
 }
 
-/** Écran plein, aux couleurs de l'application, pour la connexion et la création du code. */
-export function LockLayout({ eyebrow, title, subtitle, children, footer }: LockLayoutProps) {
+/** Écran de connexion / création du code : en-tête vert arrondi, pavé sur fond clair. */
+export function LockLayout({ eyebrow, title, caption, avatar, children, footer }: LockLayoutProps) {
   return (
-    <main className="relative flex h-dvh flex-col overflow-hidden bg-emerald-900 text-white">
-      {/* Fond : dégradé + halo lumineux discret derrière le logo. */}
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-gradient-to-b from-emerald-700 via-emerald-800 to-teal-950" />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-0 h-[28rem] w-[28rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-300/20 blur-3xl"
-      />
+    <main className="flex h-dvh flex-col overflow-hidden bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+      <header className="relative overflow-hidden rounded-b-[2.5rem] bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-900 px-6 pb-[clamp(1.25rem,3.5dvh,2rem)] pt-[max(1rem,env(safe-area-inset-top))] text-white shadow-lg shadow-emerald-900/20">
+        <div aria-hidden="true" className="pointer-events-none absolute -right-12 -top-20 h-56 w-56 rounded-full bg-white/10" />
+        <div aria-hidden="true" className="pointer-events-none absolute -bottom-24 -left-16 h-48 w-48 rounded-full bg-teal-300/10" />
 
-      <div className="relative mx-auto flex w-full max-w-sm flex-1 flex-col items-center px-6 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))]">
-        <header className="flex flex-col items-center text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-lg shadow-emerald-950/30">
-            <img src="/icon.svg" alt="" width={44} height={44} className="h-11 w-11" />
+        <div className="relative mx-auto flex max-w-sm items-center gap-2 text-sm font-semibold text-emerald-50">
+          <img src="/icon.svg" alt="" width={24} height={24} className="h-6 w-6 rounded-md" />
+          Mes Dépenses
+        </div>
+
+        <div className="relative mx-auto mt-[clamp(0.75rem,2.5dvh,1.5rem)] flex max-w-sm flex-col items-center text-center">
+          <div
+            aria-hidden="true"
+            className="flex h-[clamp(3.5rem,9dvh,5rem)] w-[clamp(3.5rem,9dvh,5rem)] items-center justify-center rounded-full bg-white/15 text-[clamp(1.5rem,4dvh,2.25rem)] font-bold ring-4 ring-white/25 backdrop-blur"
+          >
+            {avatar ?? <img src="/icon.svg" alt="" width={40} height={40} className="h-3/5 w-3/5" />}
           </div>
           {eyebrow && <p className="mt-3 text-sm font-medium text-emerald-100">{eyebrow}</p>}
-          <h1 className="mt-0.5 text-2xl font-bold tracking-tight">{title}</h1>
-          {/* Masqué sur les écrans très courts pour garder le pavé entier visible. */}
-          {subtitle && (
-            <p className="mt-1 max-w-[18rem] text-sm text-emerald-50/90 [@media(max-height:600px)]:hidden">{subtitle}</p>
-          )}
-        </header>
+          <h1 className="text-[clamp(1.5rem,3.6dvh,1.875rem)] font-bold leading-tight tracking-tight">{title}</h1>
+          {caption && <p className="mt-1 text-xs font-medium text-emerald-100/90">{caption}</p>}
+        </div>
+      </header>
 
+      <div className="mx-auto flex w-full max-w-sm flex-1 flex-col items-center px-6 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         {children}
-
-        {footer && <div className="mt-2 flex min-h-11 items-center justify-center">{footer}</div>}
+        {footer && <div className="mt-1 flex min-h-11 items-center justify-center">{footer}</div>}
       </div>
     </main>
   );

@@ -179,7 +179,7 @@ export function SecuritySection() {
               Rien ne quitte votre téléphone : l'application garde seulement une clé créée par le téléphone. Votre code
               secret reste utilisable à tout moment.
             </p>
-            {biometricError && <PinMessage tone="neutral" kind="error">{biometricError}</PinMessage>}
+            {biometricError && <PinMessage kind="error">{biometricError}</PinMessage>}
           </div>
         </Modal>
       )}
@@ -244,7 +244,7 @@ function VerifyPinModal({ title, onClose, onVerified }: { title: string; onClose
         heading="Saisissez votre code actuel"
         message={
           error ? (
-            <PinMessage tone="neutral" kind="error">
+            <PinMessage kind="error">
               {error}
             </PinMessage>
           ) : null

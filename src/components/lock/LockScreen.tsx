@@ -1,15 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLock } from '../../hooks/useLock';
-import { greetingLine, useUserName } from '../../hooks/useUserName';
+import { useUserName } from '../../hooks/useUserName';
 import { biometricName, isAppleDevice } from '../../utils/biometric';
-import { formatLongDate, todayISO } from '../../utils/dates';
+import { formatLongDate, greetingFor, todayISO } from '../../utils/dates';
 import { formatWait } from '../../utils/pin';
 import { FaceIdIcon, FingerprintIcon } from '../Icons';
 import { ForgotPinDialog } from './ForgotPinDialog';
 import { LockLayout } from './LockLayout';
 import { PinMessage, PinPad } from './PinPad';
 
-/** Écran de connexion : déverrouillage par code ou Face ID / empreinte. */
+/** Écran de connexion : Face ID / empreinte lancé automatiquement, code en secours. */
 export function LockScreen() {
   const { unlock, pinLength, blockedUntil, biometricEnabled, unlockWithBiometric } = useLock();
   const [userName] = useUserName();
@@ -17,10 +17,11 @@ export function LockScreen() {
   const [error, setError] = useState<string | null>(null);
   const [errorKey, setErrorKey] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [scanning, setScanning] = useState(false);
   const [retryAt, setRetryAt] = useState<number | null>(blockedUntil);
   const [now, setNow] = useState(Date.now());
   const [forgot, setForgot] = useState(false);
-  const autoTried = useRef(false);
+  const scanInProgress = useRef(false);
 
   // Compte à rebours pendant un blocage temporaire.
   useEffect(() => {
@@ -36,21 +37,35 @@ export function LockScreen() {
     return () => clearInterval(timer);
   }, [retryAt]);
 
-  async function tryBiometric() {
-    setBusy(true);
-    setError(null);
-    const result = await unlockWithBiometric();
-    if (result.ok) return; // l'application s'affiche
-    setBusy(false);
-    setError(result.error);
-  }
+  /**
+   * Lance Face ID / l'empreinte. En mode automatique, un échec reste silencieux
+   * (ex. Safari qui exige un toucher) : l'icône du pavé permet de relancer.
+   */
+  const scan = useCallback(
+    async (automatic: boolean) => {
+      if (scanInProgress.current) return;
+      scanInProgress.current = true;
+      setScanning(true);
+      if (!automatic) setError(null);
+      const result = await unlockWithBiometric();
+      scanInProgress.current = false;
+      if (result.ok) return; // l'application s'affiche
+      setScanning(false);
+      if (!automatic) setError(result.error);
+    },
+    [unlockWithBiometric],
+  );
 
-  // Android : la demande d'empreinte s'ouvre directement. iPhone : Safari exige un toucher sur le bouton.
+  // Lancement automatique à l'affichage, et à chaque retour au premier plan.
   useEffect(() => {
-    if (!biometricEnabled || autoTried.current || isAppleDevice()) return;
-    autoTried.current = true;
-    void tryBiometric();
-  }, [biometricEnabled]);
+    if (!biometricEnabled) return;
+    void scan(true);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void scan(true);
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [biometricEnabled, scan]);
 
   async function submit(pin: string) {
     setBusy(true);
@@ -66,24 +81,21 @@ export function LockScreen() {
 
   const blocked = retryAt !== null && now < retryAt;
   const message = blocked && retryAt !== null ? `Trop d'essais. Réessayez dans ${formatWait(retryAt - now)}.` : error;
-  const BiometricIcon = isAppleDevice() ? FaceIdIcon : FingerprintIcon;
+  const apple = isAppleDevice();
+  const BiometricIcon = apple ? FaceIdIcon : FingerprintIcon;
+  const initial = userName.trim().charAt(0).toLocaleUpperCase('fr-FR');
 
   return (
     <LockLayout
-      eyebrow={`${greetingLine(userName)} · ${formatLongDate(todayISO())}`}
-      title="Mes Dépenses"
-      subtitle={
-        blocked
-          ? 'Saisie du code temporairement bloquée'
-          : biometricEnabled
-            ? `Utilisez ${biometricName()} ou votre code`
-            : 'Entrez votre code secret'
-      }
+      eyebrow={greetingFor(new Date())}
+      title={userName || 'Mes Dépenses'}
+      caption={formatLongDate(todayISO())}
+      avatar={initial || undefined}
       footer={
         <button
           type="button"
           onClick={() => setForgot(true)}
-          className="min-h-11 rounded-full px-4 text-sm font-semibold text-emerald-50 hover:bg-white/10"
+          className="min-h-11 rounded-full px-4 text-sm font-semibold text-emerald-800 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-slate-800"
         >
           Code oublié ?
         </button>
@@ -99,18 +111,20 @@ export function LockScreen() {
         onComplete={(pin) => void submit(pin)}
         disabled={busy || blocked}
         label="Entrez votre code"
-        tone="brand"
         errorKey={errorKey}
         error={message !== null && value.length === 0 && errorKey > 0}
         message={
           message ? (
-            <PinMessage tone="brand" kind="error">
-              {message}
+            <PinMessage kind="error">{message}</PinMessage>
+          ) : scanning ? (
+            <PinMessage kind="info">
+              <span className="inline-flex items-center gap-2">
+                <BiometricIcon width={18} height={18} className="animate-pulse" />
+                {apple ? 'Face ID en cours…' : 'Posez votre doigt sur le capteur…'}
+              </span>
             </PinMessage>
           ) : busy ? (
-            <PinMessage tone="brand" kind="info">
-              Vérification…
-            </PinMessage>
+            <PinMessage kind="info">Vérification…</PinMessage>
           ) : null
         }
         sideKey={
@@ -118,9 +132,9 @@ export function LockScreen() {
             ? {
                 label: <BiometricIcon width={30} height={30} />,
                 ariaLabel: `Déverrouiller avec ${biometricName()}`,
-                onClick: () => void tryBiometric(),
+                onClick: () => void scan(false),
                 // Reste utilisable pendant un blocage du code.
-                disabled: busy,
+                disabled: busy || scanning,
               }
             : undefined
         }

@@ -1,9 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { PIN_MAX_LENGTH, PIN_MIN_LENGTH } from '../../utils/pin';
 
-export type PinTone = 'brand' | 'neutral';
-
-/** Touche optionnelle en bas à gauche du pavé (ex. « OK », « Retour »). */
+/** Touche optionnelle en bas à gauche du pavé (ex. « OK », « Retour », Face ID). */
 export interface PinSideKey {
   label: ReactNode;
   ariaLabel: string;
@@ -23,7 +21,6 @@ interface PinPadProps {
   disabled?: boolean;
   /** Texte lu par les lecteurs d'écran (ex. « Saisissez votre code »). */
   label: string;
-  tone?: PinTone;
   /** Change à chaque erreur : secoue les points et fait vibrer le téléphone. */
   errorKey?: number;
   /** Les points sont affichés en rouge. */
@@ -37,32 +34,8 @@ interface PinPadProps {
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'] as const;
 
-const TONES: Record<
-  PinTone,
-  { key: string; side: string; dotOn: string; dotOff: string; dotError: string; text: string; heading: string }
-> = {
-  brand: {
-    key: 'bg-white/10 text-white ring-1 ring-inset ring-white/20 hover:bg-white/20 active:bg-white/30',
-    side: 'text-white hover:bg-white/10 active:bg-white/20',
-    dotOn: 'scale-110 border-white bg-white',
-    dotOff: 'border-white/60',
-    dotError: 'border-red-300 bg-red-300',
-    text: 'text-white',
-    heading: 'text-emerald-50',
-  },
-  neutral: {
-    key: 'bg-slate-100 text-slate-900 hover:bg-slate-200 active:bg-slate-300 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700',
-    side: 'text-emerald-800 hover:bg-slate-100 dark:text-emerald-300 dark:hover:bg-slate-800',
-    dotOn: 'scale-110 border-emerald-700 bg-emerald-700 dark:border-emerald-400 dark:bg-emerald-400',
-    dotOff: 'border-slate-400 dark:border-slate-500',
-    dotError: 'border-red-600 bg-red-600 dark:border-red-400 dark:bg-red-400',
-    text: 'text-slate-900 dark:text-slate-100',
-    heading: 'text-slate-600 dark:text-slate-400',
-  },
-};
-
 // Touches carrées dont la taille s'adapte à la hauteur de l'écran (petits téléphones compris).
-const KEY_SIZE = 'h-[clamp(3rem,8.5dvh,4.5rem)] w-[clamp(3rem,8.5dvh,4.5rem)]';
+const KEY_SIZE = 'h-[clamp(2.9rem,8dvh,4.25rem)] w-[clamp(2.9rem,8dvh,4.25rem)]';
 
 /** Pavé numérique de saisie du code (tactile + clavier physique). */
 export function PinPad({
@@ -73,7 +46,6 @@ export function PinPad({
   onSubmit,
   disabled = false,
   label,
-  tone = 'neutral',
   errorKey = 0,
   error = false,
   heading,
@@ -81,7 +53,6 @@ export function PinPad({
   sideKey,
 }: PinPadProps) {
   const max = length ?? PIN_MAX_LENGTH;
-  const styles = TONES[tone];
   const latest = useRef({ value, onChange, onComplete, onSubmit, disabled, max, length });
   latest.current = { value, onChange, onComplete, onSubmit, disabled, max, length };
 
@@ -118,20 +89,24 @@ export function PinPad({
   }, [errorKey]);
 
   const dots = length ?? Math.max(PIN_MIN_LENGTH, Math.min(PIN_MAX_LENGTH, value.length + 1));
-  const keyClass = `flex ${KEY_SIZE} select-none items-center justify-center rounded-full text-[1.7rem] font-medium tabular-nums transition active:scale-95 disabled:opacity-40 ${styles.key}`;
-  const sideClass = `flex ${KEY_SIZE} select-none items-center justify-center rounded-full text-base font-semibold transition active:scale-95 disabled:opacity-30 ${styles.side}`;
+  const keyClass = `flex ${KEY_SIZE} select-none items-center justify-center rounded-full bg-white text-[1.6rem] font-medium tabular-nums text-slate-900 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 active:scale-95 active:bg-emerald-50 disabled:opacity-40 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-700 dark:hover:bg-slate-700 dark:active:bg-slate-600`;
+  const sideClass = `flex ${KEY_SIZE} select-none items-center justify-center rounded-full text-base font-semibold text-emerald-800 transition hover:bg-emerald-50 active:scale-95 disabled:opacity-30 dark:text-emerald-300 dark:hover:bg-slate-800`;
 
   return (
     <div className="flex w-full flex-1 flex-col items-center">
       {/* Zone supérieure : consigne, points, message — centrée dans l'espace disponible. */}
-      <div className="flex w-full flex-1 flex-col items-center justify-center gap-4 py-2">
-        {heading && <div className={`text-center text-sm font-medium ${styles.heading}`}>{heading}</div>}
+      <div className="flex w-full flex-1 flex-col items-center justify-center gap-3 py-2">
+        {heading && <div className="text-center text-sm font-medium text-slate-600 dark:text-slate-400">{heading}</div>}
         <div key={errorKey} className={`flex gap-5 ${errorKey > 0 ? 'animate-shake' : ''}`} aria-hidden="true">
           {Array.from({ length: dots }, (_, i) => (
             <span
               key={i}
               className={`h-3.5 w-3.5 rounded-full border-2 transition-all duration-150 ${
-                error ? styles.dotError : i < value.length ? styles.dotOn : styles.dotOff
+                error
+                  ? 'border-red-600 bg-red-600 dark:border-red-400 dark:bg-red-400'
+                  : i < value.length
+                    ? 'scale-110 border-emerald-700 bg-emerald-700 dark:border-emerald-400 dark:bg-emerald-400'
+                    : 'border-slate-400 dark:border-slate-500'
               }`}
             />
           ))}
@@ -140,13 +115,13 @@ export function PinPad({
           {label}. {value.length} chiffre{value.length > 1 ? 's' : ''} saisi{value.length > 1 ? 's' : ''}
           {length ? ` sur ${length}` : ''}.
         </p>
-        <div className="flex min-h-[2.75rem] w-full items-start justify-center" aria-live="assertive">
+        <div className="flex min-h-[2.5rem] w-full items-start justify-center" aria-live="assertive">
           {message}
         </div>
       </div>
 
       {/* Pavé, ancré en bas pour être à portée du pouce. */}
-      <div className={`grid grid-cols-3 gap-x-[clamp(1rem,6vw,1.75rem)] gap-y-[clamp(0.5rem,1.6dvh,1rem)] ${styles.text}`}>
+      <div className="grid grid-cols-3 gap-x-[clamp(1.25rem,7vw,2rem)] gap-y-[clamp(0.5rem,1.5dvh,0.9rem)]">
         {KEYS.map((k) => (
           <button key={k} type="button" className={keyClass} onClick={() => press(k)} disabled={disabled} aria-label={k}>
             {k}
@@ -170,7 +145,7 @@ export function PinPad({
         </button>
         <button
           type="button"
-          className={sideClass}
+          className={`${sideClass} text-slate-700 dark:text-slate-300`}
           onClick={erase}
           disabled={disabled || value.length === 0}
           aria-label="Effacer le dernier chiffre"
@@ -186,15 +161,11 @@ export function PinPad({
 }
 
 /** Message d'erreur ou d'aide sous les points. */
-export function PinMessage({ children, tone, kind }: { children: ReactNode; tone: PinTone; kind: 'error' | 'info' }) {
+export function PinMessage({ children, kind }: { children: ReactNode; kind: 'error' | 'info' }) {
   const styles =
-    tone === 'brand'
-      ? kind === 'error'
-        ? 'bg-red-500/25 text-white ring-1 ring-inset ring-red-200/40'
-        : 'bg-white/10 text-emerald-50'
-      : kind === 'error'
-        ? 'bg-red-50 text-red-800 dark:bg-red-950 dark:text-red-200'
-        : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
+    kind === 'error'
+      ? 'bg-red-50 text-red-800 ring-1 ring-inset ring-red-200 dark:bg-red-950 dark:text-red-200 dark:ring-red-900'
+      : 'bg-emerald-50 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100';
   return (
     <p role={kind === 'error' ? 'alert' : undefined} className={`max-w-xs rounded-2xl px-3 py-2 text-center text-sm font-medium ${styles}`}>
       {kind === 'error' && <span aria-hidden="true">⚠️ </span>}
