@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { FirstRunSetup } from './components/lock/FirstRunSetup';
 import { LockScreen } from './components/lock/LockScreen';
 import { LockProvider, useLock } from './hooks/useLock';
+import { AssistantSheet, type ChatMessage } from './components/assistant/AssistantSheet';
 import { BottomNav } from './components/BottomNav';
 import { ExpenseFormModal } from './components/ExpenseFormModal';
 import { PlusIcon } from './components/Icons';
@@ -53,6 +54,9 @@ function AppShell() {
   const [route] = useHashRoute();
   const [editor, setEditor] = useState<EditorState>({ open: false });
   const [pendingDraft, setPendingDraft] = useState(readPendingDraft);
+  // La conversation reste affichée tant que l'application est ouverte.
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [assistantMessages, setAssistantMessages] = useState<ChatMessage[]>([]);
   const { offlineState, online } = usePwaStatus();
   const { showToast } = useToast();
   const previousOfflineState = useRef(offlineState);
@@ -142,8 +146,27 @@ function AppShell() {
         <PlusIcon width={32} height={32} strokeWidth={2.5} />
       </button>
 
+      <button
+        type="button"
+        onClick={() => setAssistantOpen(true)}
+        className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] left-4 z-40 flex h-12 items-center gap-2 rounded-full bg-white px-4 font-semibold text-emerald-900 shadow-lg ring-1 ring-slate-200 hover:bg-emerald-50 dark:bg-slate-800 dark:text-emerald-100 dark:ring-slate-700 dark:hover:bg-slate-700 sm:left-[calc(50%-15rem)]"
+      >
+        <span aria-hidden="true">💬</span> Assistant
+      </button>
+
       <BottomNav current={route} />
 
+      {assistantOpen && (
+        <AssistantSheet
+          messages={assistantMessages}
+          setMessages={setAssistantMessages}
+          onClose={() => setAssistantOpen(false)}
+          onEditExpense={(expense) => {
+            setAssistantOpen(false);
+            openEdit(expense);
+          }}
+        />
+      )}
       {editor.open && <ExpenseFormModal expense={editor.expense} onClose={closeEditor} />}
     </>
   );
