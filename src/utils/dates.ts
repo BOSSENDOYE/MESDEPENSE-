@@ -75,6 +75,12 @@ export function formatDayHeading(date: ISODate, today: ISODate = todayISO()): st
   return capitalize(format(parseISO(date), pattern, { locale: fr }));
 }
 
+/** « Bonjour » ou « Bonsoir » selon l'heure. */
+export function greetingFor(date: Date): string {
+  const hour = date.getHours();
+  return hour >= 5 && hour < 18 ? 'Bonjour' : 'Bonsoir';
+}
+
 /** « Jeudi 29 octobre » */
 export function formatLongDate(date: ISODate): string {
   return capitalize(format(parseISO(date), 'EEEE d MMMM', { locale: fr }));

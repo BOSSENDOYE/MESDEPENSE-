@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useLock } from '../../hooks/useLock';
+import { formatLongDate, greetingFor, todayISO } from '../../utils/dates';
 import { formatWait } from '../../utils/pin';
 import { ForgotPinDialog } from './ForgotPinDialog';
 import { LockLayout } from './LockLayout';
-import { PinPad } from './PinPad';
+import { PinMessage, PinPad } from './PinPad';
 
 /** Écran de connexion : déverrouillage par code. */
 export function LockScreen() {
@@ -43,13 +44,19 @@ export function LockScreen() {
   }
 
   const blocked = retryAt !== null && now < retryAt;
+  const message = blocked && retryAt !== null ? `Trop d'essais. Réessayez dans ${formatWait(retryAt - now)}.` : error;
 
   return (
     <LockLayout
+      eyebrow={`${greetingFor(new Date())} 👋 · ${formatLongDate(todayISO())}`}
       title="Mes Dépenses"
-      subtitle={blocked ? 'Saisie temporairement bloquée' : 'Entrez votre code pour continuer'}
+      subtitle={blocked ? 'Saisie temporairement bloquée' : 'Entrez votre code secret'}
       footer={
-        <button type="button" onClick={() => setForgot(true)} className="min-h-11 px-3 text-sm font-semibold text-emerald-50 underline">
+        <button
+          type="button"
+          onClick={() => setForgot(true)}
+          className="min-h-11 rounded-full px-4 text-sm font-semibold text-emerald-50 hover:bg-white/10"
+        >
           Code oublié ?
         </button>
       }
@@ -66,14 +73,19 @@ export function LockScreen() {
         label="Entrez votre code"
         tone="brand"
         errorKey={errorKey}
+        error={message !== null && value.length === 0}
+        message={
+          message ? (
+            <PinMessage tone="brand" kind="error">
+              {message}
+            </PinMessage>
+          ) : busy ? (
+            <PinMessage tone="brand" kind="info">
+              Vérification…
+            </PinMessage>
+          ) : null
+        }
       />
-      <div className="mt-6 min-h-12" aria-live="assertive">
-        {error && (
-          <p role="alert" className="rounded-xl bg-red-950/40 px-3 py-2 text-center text-sm font-medium">
-            {blocked && retryAt !== null ? `Trop d'essais. Réessayez dans ${formatWait(retryAt - now)}.` : error}
-          </p>
-        )}
-      </div>
       {forgot && <ForgotPinDialog onClose={() => setForgot(false)} />}
     </LockLayout>
   );

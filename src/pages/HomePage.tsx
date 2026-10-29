@@ -18,6 +18,7 @@ import {
   dayOfMonthOf,
   formatLongDate,
   formatMonthLabel,
+  greetingFor,
   formatMonthName,
   shiftMonth,
   todayISO,
@@ -44,12 +45,6 @@ import { pluralize } from '../utils/text';
 interface HomePageProps {
   onAdd: () => void;
   onEdit: (expense: Expense) => void;
-}
-
-function greeting(date: Date): string {
-  const hour = date.getHours();
-  if (hour < 5 || hour >= 18) return 'Bonsoir';
-  return 'Bonjour';
 }
 
 export function HomePage({ onAdd, onEdit }: HomePageProps) {
@@ -94,7 +89,7 @@ export function HomePage({ onAdd, onEdit }: HomePageProps) {
     <div className="space-y-4">
       <header className="flex items-end justify-between gap-2 pb-1 pt-2">
         <div>
-          <p className={`text-sm ${mutedText}`}>{greeting(new Date())} 👋</p>
+          <p className={`text-sm ${mutedText}`}>{greetingFor(new Date())} 👋</p>
           <h1 className="text-2xl font-bold">Tableau de bord</h1>
         </div>
         <p className={`rounded-full bg-white px-3 py-1 text-xs font-medium ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-800 ${mutedText}`}>

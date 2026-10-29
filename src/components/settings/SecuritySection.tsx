@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { useLock } from '../../hooks/useLock';
 import { useToast } from '../../hooks/useToast';
 import { AUTO_LOCK_CHOICES } from '../../utils/storage';
-import { PinPad } from '../lock/PinPad';
+import { PinMessage, PinPad } from '../lock/PinPad';
 import { PinSetup } from '../lock/PinSetup';
 import { Modal } from '../Modal';
-import { Button, Card, FieldError, inputClass, labelClass, mutedText } from '../ui';
+import { Button, Card, inputClass, labelClass, mutedText } from '../ui';
 
 type Dialog = null | 'create' | 'verify-change' | 'change' | 'verify-disable';
 
@@ -119,7 +119,6 @@ function VerifyPinModal({ title, onClose, onVerified }: { title: string; onClose
 
   return (
     <Modal title={title} onClose={onClose}>
-      <p className={`mb-4 text-center text-sm ${mutedText}`}>Saisissez votre code actuel.</p>
       <PinPad
         value={value}
         onChange={(v) => {
@@ -131,8 +130,16 @@ function VerifyPinModal({ title, onClose, onVerified }: { title: string; onClose
         disabled={busy}
         label="Code actuel"
         errorKey={errorKey}
+        error={error !== null && value.length === 0}
+        heading="Saisissez votre code actuel"
+        message={
+          error ? (
+            <PinMessage tone="neutral" kind="error">
+              {error}
+            </PinMessage>
+          ) : null
+        }
       />
-      <div className="mt-4 min-h-10">{error && <FieldError>{error}</FieldError>}</div>
     </Modal>
   );
 }

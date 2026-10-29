@@ -7,11 +7,16 @@ export function FirstRunSetup() {
   const { savePin, skipSetup } = useLock();
   return (
     <LockLayout
-      title="Bienvenue 👋"
-      subtitle="Créez un code secret : il sera demandé à chaque ouverture pour protéger vos dépenses."
+      eyebrow="Bienvenue 👋"
+      title="Protégez vos dépenses"
+      subtitle="Ce code sera demandé à chaque ouverture de l'application."
       footer={
-        <button type="button" onClick={skipSetup} className="min-h-11 px-3 text-sm font-semibold text-emerald-50 underline">
-          Plus tard (activable dans Réglages)
+        <button
+          type="button"
+          onClick={skipSetup}
+          className="min-h-11 rounded-full px-4 text-sm font-semibold text-emerald-50 hover:bg-white/10"
+        >
+          Plus tard
         </button>
       }
     >
